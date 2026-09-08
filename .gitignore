@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*tsbuildinfo
+.turbo/
+.DS_Store
+coverage/
+target/
+Cargo.lock
+*.log
+.env
+.env.localtsonfig,jsn now?

@@ -1,0 +1,23 @@
+{
+  "name": "@buckwea/core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "acorn": "^8.18.0",
+    "es-module-lexer": "^2.3.2",
+    "magic-string": "^1.2.3",
+    "source-map": "^0.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2"
+  }
+}
