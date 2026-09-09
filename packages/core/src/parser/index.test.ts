@@ -11,6 +11,7 @@ describe("parseModule - static imports", () => {
             { specifier: "./math.js", bindings: "add", local: "add" },
         ]);
     });
+
     it("extracts a named import with an alias", () =>{
         const result = parseModule(
             "/fake/entry.ts",
@@ -20,6 +21,7 @@ describe("parseModule - static imports", () => {
             { specifier: "./math.js", bindings: "add", local: "sum" },
         ]);
     });
+
     it("extracts multiple named imports form one declaration", () => {
         const result = parseModule(
             "/fake/entry.ts",
@@ -30,6 +32,7 @@ describe("parseModule - static imports", () => {
             { specifier: "./math.js", bindings: "subtract", local: "subtract" },
         ]);
     });
+
     it("extracts a namespace import", () => {
         const result = parseModule(
             "/fake/entry.ts",
@@ -39,8 +42,41 @@ describe("parseModule - static imports", () => {
             { specifier: "./math.js", bindings: "*", local: "math" },
         ]);
     });
+
     it("returns an empty array for a module with no imports", () => {
         const result = parseModule("/fake/entry.ts", "console.log('hello');");
         expect(result.imports).toEqual([]);
+    });
+});
+
+describe("parseModule - named exports", () => {
+    it("extracts a plain named export (declaration form)", () => {
+        const result = parseModule("/false/entry.ts", "export const x = 1;");
+        expect(result.exports).toEqual([
+            { exported: "x", local: "x" },
+        ]);
+    });
+
+    it("extracts a named export via export list", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            "const add = 1; export { add };",
+        );
+        expect(result.exports).toEqual([{exported: "add", local: "add"}]);
+    });
+
+    it("extracts a a re-export with reexportFrom", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            'export { add } from "./math.js";',
+        );
+        expect(result.exports).toEqual([
+            { exported: "add", local: "add", reexportFrom: "./math.js" },
+        ]);
+    });
+
+    it("returns an empty array for a module with no exports", () => {
+        const result = parseModule("/fake/entry.ts", "const x = 1;");
+        expect(result.exports).toEqual([]);
     });
 });
