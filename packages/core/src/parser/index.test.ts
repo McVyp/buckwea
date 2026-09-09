@@ -80,3 +80,29 @@ describe("parseModule - named exports", () => {
         expect(result.exports).toEqual([]);
     });
 });
+
+describe("parseModule - default exports", () => {
+    it("extracts a named default function export", () =>{
+        const result = parseModule(
+            "/fake/entry.ts",
+            "export default function foo() {}",
+        );
+        expect(result.exports).toEqual([{ exported: "default", local: "foo" }]);
+    })
+
+    it("extracts an anonymous default function export", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            "export default function() {}",
+        );
+        expect(result.exports).toEqual([{ exported: "default", local: "default" }]);
+    })
+
+    it("extracts a default export of an expression", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            "const add = 1; export default add;",
+        );
+        expect(result.exports).toEqual([{ exported: "default", local: "default" }]);
+    })
+})

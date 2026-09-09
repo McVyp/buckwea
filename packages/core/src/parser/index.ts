@@ -1,6 +1,7 @@
 import {
   ImportDeclaration,
   ExportNamedDeclaration,
+  ExportDefaultDeclaration,
   parse,
   Program,
 } from "acorn";
@@ -80,7 +81,9 @@ export function parseModule(path: string, source: string): ParsedModule {
 
     if (node.type === "ExportNamedDeclaration") {
       const exportNode = node as ExportNamedDeclaration;
-      const reexportFrom = exportNode.source ? (exportNode.source.value as string) : undefined;
+      const reexportFrom = exportNode.source
+        ? (exportNode.source.value as string)
+        : undefined;
 
       if (exportNode.declaration) {
         //export const x = 1;
@@ -91,11 +94,10 @@ export function parseModule(path: string, source: string): ParsedModule {
                 exported: decl.id.name,
                 local: decl.id.name,
               });
-            } 
+            }
           }
         }
-      }
-      else {
+      } else {
         // export { add }; or export { add } from "./math.js"
         for (const spec of exportNode.specifiers) {
           const exportedName =
@@ -109,9 +111,32 @@ export function parseModule(path: string, source: string): ParsedModule {
           exports.push({
             exported: exportedName,
             local: localName,
-            ...(reexportFrom ? { reexportFrom } : {})
-          })
+            ...(reexportFrom ? { reexportFrom } : {}),
+          });
         }
+      }
+    }
+
+    if (node.type == "ExportDefaultDeclaration") {
+      const exportNode = node as ExportDefaultDeclaration;
+      const decl = exportNode.declaration;
+
+      // named function/class declaration: export default function foo() {}
+      if (
+        (decl.type === "FunctionDeclaration" ||
+          decl.type === "ClassDeclaration") &&
+        decl.id
+      ) {
+        exports.push({
+          exported: "default",
+          local: decl.id.name,
+        });
+      } else {
+        // anonymous function/class or expression: export default function() {} / export default add; / export default 42;
+        exports.push({
+          exported: "default",
+          local: "default",
+        });
       }
     }
   }
