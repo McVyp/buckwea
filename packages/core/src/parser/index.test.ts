@@ -65,7 +65,7 @@ describe("parseModule - named exports", () => {
         expect(result.exports).toEqual([{exported: "add", local: "add"}]);
     });
 
-    it("extracts a a re-export with reexportFrom", () => {
+    it("extracts a re-export with reexportFrom", () => {
         const result = parseModule(
             "/fake/entry.ts",
             'export { add } from "./math.js";',
@@ -106,3 +106,39 @@ describe("parseModule - default exports", () => {
         expect(result.exports).toEqual([{ exported: "default", local: "default" }]);
     })
 })
+
+describe("parseModule - dynamic imports", () =>{
+    it("extracts a dynamic import inside an async function", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            'async function load() { const mod = await import("./editor.js"); }',
+        );
+        expect(result.dynamicImports).toHaveLength(1);
+        expect(result.dynamicImports[0].specifier).toBe("./editor.js");
+    
+    });
+
+    it("extracts a top-level dynamic import", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            'import("./editor.js");',
+        );
+        expect(result.dynamicImports).toHaveLength(1);
+        expect(result.dynamicImports[0].specifier).toBe("./editor.js");
+        expect(result.dynamicImports[0].start).toBe(0);
+    })
+
+    it("extracts multiple dynamic imports in the same file", () => {
+        const result = parseModule(
+            "/fake/entry.ts",
+            'import("./a.js"); import("./b.js");',
+        );
+        expect(result.dynamicImports.map((d) => d.specifier)
+    ).toEqual(["./a.js", "./b.js"]);
+    });
+
+    it("returns an empty array for a module with no dynamic imports", () => {
+        const result = parseModule("/fake/entry.ts", "const x = 1;");
+        expect(result.dynamicImports).toEqual([]);
+    });
+});

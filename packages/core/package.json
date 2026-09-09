@@ -12,6 +12,7 @@
   "type": "module",
   "dependencies": {
     "acorn": "^8.18.0",
+    "acorn-walk": "^8.3.5",
     "es-module-lexer": "^2.3.2",
     "magic-string": "^1.2.3",
     "source-map": "^0.8.0"

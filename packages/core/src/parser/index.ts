@@ -5,6 +5,7 @@ import {
   parse,
   Program,
 } from "acorn";
+import { simple as walkSimple } from "acorn-walk";
 
 export interface ParsedModule {
   path: string;
@@ -43,6 +44,7 @@ export function parseModule(path: string, source: string): ParsedModule {
 
   const imports: ImportBinding[] = [];
   const exports: ExportBinding[] = [];
+  const dynamicImports: DynamicImportBinding[] = [];
 
   for (const node of ast.body) {
     if (node.type === "ImportDeclaration") {
@@ -140,11 +142,24 @@ export function parseModule(path: string, source: string): ParsedModule {
       }
     }
   }
+
+  walkSimple(ast, {
+    ImportExpression(node) {
+      if (node.source.type == "Literal") {
+        dynamicImports.push({
+          specifier: node.source.value as string,
+          start: node.start,
+          end: node.end,
+        });
+      }
+    }
+  })
+
   return {
     path,
     source,
     imports,
     exports,
-    dynamicImports: [],
+    dynamicImports,
   };
 }
