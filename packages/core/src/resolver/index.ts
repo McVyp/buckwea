@@ -6,7 +6,7 @@ export interface ResolveOptions {
   specifier: string;
 }
 
-const EXTENSIONS_TO_TRY = ["", ".ts", ".tsx", ".js", ".jsx"];
+const EXTENSIONS_TO_TRY = [".ts", ".tsx", ".js", ".jsx", ""];
 const STRIPPABLE_EXTENSIONS = [".js", ".jsx", ".ts", ".tsx"];
 
 export function resolve(options: ResolveOptions): string {
