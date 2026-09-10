@@ -2,7 +2,7 @@
   "name": "@buckwea/core",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "vitest run"
   },
@@ -12,6 +12,7 @@
   "type": "module",
   "dependencies": {
     "acorn": "^8.18.0",
+    "acorn-typescript": "^1.4.13",
     "acorn-walk": "^8.3.5",
     "es-module-lexer": "^2.3.2",
     "magic-string": "^1.2.3",

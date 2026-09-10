@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { ParsedModule, parseModule } from "../parser";
-import { resolve } from "../resolver";
+import { ParsedModule, parseModule } from "../parser/index.js";
+import { resolve } from "../resolver/index.js";
 
 export interface ModuleGraphNode {
     parsedModule: ParsedModule;

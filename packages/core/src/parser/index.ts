@@ -2,9 +2,10 @@ import {
   ImportDeclaration,
   ExportNamedDeclaration,
   ExportDefaultDeclaration,
-  parse,
+  Parser,
   Program,
 } from "acorn";
+import tsPlugin from "acorn-typescript";
 import { simple as walkSimple } from "acorn-walk";
 
 export interface ParsedModule {
@@ -36,7 +37,8 @@ export interface DynamicImportBinding {
 // parses a module source code and returns a ParsedModule object containing information about imports,
 // exports, and dynamic imports. It never touches the file system.
 export function parseModule(path: string, source: string): ParsedModule {
-  const ast = parse(source, {
+  const TSParser = Parser.extend(tsPlugin() as any); 
+  const ast = TSParser.parse(source, {
     ecmaVersion: "latest",
     sourceType: "module",
     locations: true,
@@ -152,8 +154,8 @@ export function parseModule(path: string, source: string): ParsedModule {
           end: node.end,
         });
       }
-    }
-  })
+    },
+  });
 
   return {
     path,
