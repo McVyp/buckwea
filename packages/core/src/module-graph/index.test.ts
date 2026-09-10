@@ -58,4 +58,25 @@ describe("buildModuleGraph", () => {
       join(dir, "a.ts"),
     ]);
   });
+
+  it("only parses a shared dependency once (diamond shape)", () => {
+    const dir = makeFixtures({
+        "a.ts": `import { b } from "./b.js"; import { c } from "./c.js";`,
+        "b.ts": `import { shared } from "./shared.js"`,
+        "c.ts": `import { shared } from "./shared.js"`,
+        "shared.ts": `export const shared = 1;`,
+    });
+
+    const graph = buildModuleGraph(join(dir, "a.ts"));
+
+    expect(graph.size).toBe(4);
+    expect(graph.get(join(dir, "shared.ts"))?.dependencies).toEqual([]);
+    // both b and c depend on the same resolved path
+    expect(graph.get(join(dir, "b.ts"))?.dependencies).toEqual([
+      join(dir, "shared.ts"),
+    ]);
+    expect(graph.get(join(dir, "c.ts"))?.dependencies).toEqual([
+      join(dir, "shared.ts"),
+    ]);
+  })
 });
