@@ -20,12 +20,16 @@ export interface ImportBinding {
   specifier: string;
   bindings: string;
   local: string;
+  start: number;
+  end: number;
 }
 
 export interface ExportBinding {
   exported: string;
   local: string;
   reexportFrom?: string;
+  start: number;
+  end: number;
 }
 
 export interface DynamicImportBinding {
@@ -37,7 +41,7 @@ export interface DynamicImportBinding {
 // parses a module source code and returns a ParsedModule object containing information about imports,
 // exports, and dynamic imports. It never touches the file system.
 export function parseModule(path: string, source: string): ParsedModule {
-  const TSParser = Parser.extend(tsPlugin() as any); 
+  const TSParser = Parser.extend(tsPlugin() as any);
   const ast = TSParser.parse(source, {
     ecmaVersion: "latest",
     sourceType: "module",
@@ -63,6 +67,8 @@ export function parseModule(path: string, source: string): ParsedModule {
             specifier,
             bindings: importedName,
             local: spec.local.name,
+            start: importNode.start,
+            end: importNode.end,
           });
         } else if (spec.type === "ImportDefaultSpecifier") {
           // default import: import add from "./math.js"
@@ -70,6 +76,8 @@ export function parseModule(path: string, source: string): ParsedModule {
             specifier,
             bindings: "default",
             local: spec.local.name,
+            start: importNode.start,
+            end: importNode.end,
           });
         } else if (spec.type === "ImportNamespaceSpecifier") {
           // namespace import: import * as math from "./math.js"
@@ -77,6 +85,8 @@ export function parseModule(path: string, source: string): ParsedModule {
             specifier,
             bindings: "*",
             local: spec.local.name,
+            start: importNode.start,
+            end: importNode.end,
           });
         }
       }
@@ -97,6 +107,8 @@ export function parseModule(path: string, source: string): ParsedModule {
               exports.push({
                 exported: decl.id.name,
                 local: decl.id.name,
+                start: exportNode.start,
+                end: exportNode.end,
               });
             }
           }
@@ -115,6 +127,8 @@ export function parseModule(path: string, source: string): ParsedModule {
           exports.push({
             exported: exportedName,
             local: localName,
+            start: exportNode.start,
+            end: exportNode.end,
             ...(reexportFrom ? { reexportFrom } : {}),
           });
         }
@@ -134,12 +148,16 @@ export function parseModule(path: string, source: string): ParsedModule {
         exports.push({
           exported: "default",
           local: decl.id.name,
+          start: exportNode.start,
+          end: exportNode.end,
         });
       } else {
         // anonymous function/class or expression: export default function() {} / export default add; / export default 42;
         exports.push({
           exported: "default",
           local: "default",
+          start: exportNode.start,
+          end: exportNode.end,
         });
       }
     }

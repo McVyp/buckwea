@@ -14,7 +14,7 @@ describe("parseModule - static imports", () => {
       "/fake/entry.ts",
       'import {add} from "./math.js";',
     );
-    expect(result.imports).toEqual([
+    expect(result.imports).toMatchObject([
       { specifier: "./math.js", bindings: "add", local: "add" },
     ]);
   });
@@ -24,7 +24,7 @@ describe("parseModule - static imports", () => {
       "/fake/entry.ts",
       'import {add as sum} from "./math.js";',
     );
-    expect(result.imports).toEqual([
+    expect(result.imports).toMatchObject([
       { specifier: "./math.js", bindings: "add", local: "sum" },
     ]);
   });
@@ -34,7 +34,7 @@ describe("parseModule - static imports", () => {
       "/fake/entry.ts",
       'import {add, subtract} from "./math.js";',
     );
-    expect(result.imports).toEqual([
+    expect(result.imports).toMatchObject([
       { specifier: "./math.js", bindings: "add", local: "add" },
       { specifier: "./math.js", bindings: "subtract", local: "subtract" },
     ]);
@@ -45,21 +45,21 @@ describe("parseModule - static imports", () => {
       "/fake/entry.ts",
       'import * as math from "./math.js";',
     );
-    expect(result.imports).toEqual([
+    expect(result.imports).toMatchObject([
       { specifier: "./math.js", bindings: "*", local: "math" },
     ]);
   });
 
   it("returns an empty array for a module with no imports", () => {
     const result = parseModule("/fake/entry.ts", "console.log('hello');");
-    expect(result.imports).toEqual([]);
+    expect(result.imports).toMatchObject([]);
   });
 });
 
 describe("parseModule - named exports", () => {
   it("extracts a plain named export (declaration form)", () => {
     const result = parseModule("/false/entry.ts", "export const x = 1;");
-    expect(result.exports).toEqual([{ exported: "x", local: "x" }]);
+    expect(result.exports).toMatchObject([{ exported: "x", local: "x" }]);
   });
 
   it("extracts a named export via export list", () => {
@@ -67,7 +67,7 @@ describe("parseModule - named exports", () => {
       "/fake/entry.ts",
       "const add = 1; export { add };",
     );
-    expect(result.exports).toEqual([{ exported: "add", local: "add" }]);
+    expect(result.exports).toMatchObject([{ exported: "add", local: "add" }]);
   });
 
   it("extracts a re-export with reexportFrom", () => {
@@ -75,7 +75,7 @@ describe("parseModule - named exports", () => {
       "/fake/entry.ts",
       'export { add } from "./math.js";',
     );
-    expect(result.exports).toEqual([
+    expect(result.exports).toMatchObject([
       { exported: "add", local: "add", reexportFrom: "./math.js" },
     ]);
   });
@@ -92,7 +92,7 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "export default function foo() {}",
     );
-    expect(result.exports).toEqual([{ exported: "default", local: "foo" }]);
+    expect(result.exports).toMatchObject([{ exported: "default", local: "foo" }]);
   });
 
   it("extracts an anonymous default function export", () => {
@@ -100,7 +100,7 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "export default function() {}",
     );
-    expect(result.exports).toEqual([{ exported: "default", local: "default" }]);
+    expect(result.exports).toMatchObject([{ exported: "default", local: "default" }]);
   });
 
   it("extracts a default export of an expression", () => {
@@ -108,7 +108,7 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "const add = 1; export default add;",
     );
-    expect(result.exports).toEqual([{ exported: "default", local: "default" }]);
+    expect(result.exports).toMatchObject([{ exported: "default", local: "default" }]);
   });
 });
 
@@ -150,7 +150,7 @@ describe("parseModule - real files", () => {
   it("parses a real file from disk", () => {
     const source = readFileSync(fixturePath, "utf-8");
     const result = parseModule(fixturePath, source);
-    expect(result.imports).toEqual([
+    expect(result.imports).toMatchObject([
       { specifier: "./math.js", bindings: "add", local: "add" },
     ]);
   });
