@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildModuleGraph } from "./index";
+import { buildModuleGraph } from "./index.js";
 
 function makeFixtures(files: Record<string, string>) {
   const dir = mkdtempSync(join(tmpdir(), "buckwea-graph-"));
@@ -22,10 +22,12 @@ describe("buildModuleGraph", () => {
 
     const graph = buildModuleGraph(join(dir, "a.ts"));
     expect(graph.size).toBe(3);
-    expect(graph.get(join(dir, "a.ts"))?.dependencies).toEqual([
-      join(dir, "b.ts"),
-    ]);
-    expect(graph.get(join(dir, "c.ts"))?.dependencies).toEqual([]);
+    expect(
+      Array.from(graph.get(join(dir, "a.ts"))!.dependencies.values()),
+    ).toEqual([join(dir, "b.ts")]);
+    expect(
+      Array.from(graph.get(join(dir, "c.ts"))!.dependencies.values()),
+    ).toEqual([]);
   });
 
   it("handles branching: one file importing two others", () => {
@@ -37,9 +39,10 @@ describe("buildModuleGraph", () => {
     const graph = buildModuleGraph(join(dir, "a.ts"));
 
     expect(graph.size).toBe(3);
-    expect(graph.get(join(dir, "a.ts"))?.dependencies.sort()).toEqual(
-      [join(dir, "b.ts"), join(dir, "c.ts")].sort(),
-    );
+    const aDeps = Array.from(
+      graph.get(join(dir, "a.ts"))!.dependencies.values(),
+    ).sort();
+    expect(aDeps).toEqual([join(dir, "b.ts"), join(dir, "c.ts")].sort());
   });
 
   it("terminates on a circular import instead of infinite-looping", () => {
@@ -51,32 +54,34 @@ describe("buildModuleGraph", () => {
     const graph = buildModuleGraph(join(dir, "a.ts"));
 
     expect(graph.size).toBe(2);
-    expect(graph.get(join(dir, "a.ts"))?.dependencies).toEqual([
-      join(dir, "b.ts"),
-    ]);
-    expect(graph.get(join(dir, "b.ts"))?.dependencies).toEqual([
-      join(dir, "a.ts"),
-    ]);
+    expect(
+      Array.from(graph.get(join(dir, "a.ts"))!.dependencies.values()),
+    ).toEqual([join(dir, "b.ts")]);
+    expect(
+      Array.from(graph.get(join(dir, "b.ts"))!.dependencies.values()),
+    ).toEqual([join(dir, "a.ts")]);
   });
 
   it("only parses a shared dependency once (diamond shape)", () => {
     const dir = makeFixtures({
-        "a.ts": `import { b } from "./b.js"; import { c } from "./c.js";`,
-        "b.ts": `import { shared } from "./shared.js"`,
-        "c.ts": `import { shared } from "./shared.js"`,
-        "shared.ts": `export const shared = 1;`,
+      "a.ts": `import { b } from "./b.js"; import { c } from "./c.js";`,
+      "b.ts": `import { shared } from "./shared.js"`,
+      "c.ts": `import { shared } from "./shared.js"`,
+      "shared.ts": `export const shared = 1;`,
     });
 
     const graph = buildModuleGraph(join(dir, "a.ts"));
 
     expect(graph.size).toBe(4);
-    expect(graph.get(join(dir, "shared.ts"))?.dependencies).toEqual([]);
+    expect(
+      Array.from(graph.get(join(dir, "shared.ts"))!.dependencies.values()),
+    ).toEqual([]);
     // both b and c depend on the same resolved path
-    expect(graph.get(join(dir, "b.ts"))?.dependencies).toEqual([
-      join(dir, "shared.ts"),
-    ]);
-    expect(graph.get(join(dir, "c.ts"))?.dependencies).toEqual([
-      join(dir, "shared.ts"),
-    ]);
-  })
+    expect(
+      Array.from(graph.get(join(dir, "b.ts"))!.dependencies.values()),
+    ).toEqual([join(dir, "shared.ts")]);
+    expect(
+      Array.from(graph.get(join(dir, "c.ts"))!.dependencies.values()),
+    ).toEqual([join(dir, "shared.ts")]);
+  });
 });

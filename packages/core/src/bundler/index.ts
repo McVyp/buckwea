@@ -12,8 +12,10 @@ function rewriteModule(graph: ModuleGraph, filePath: string): string {
   const edits: { start: number; end: number; replacement: string }[] = [];
 
   for (const imp of parsedModule.imports) {
-    const depIndex = parsedModule.imports.indexOf(imp);
-    const resolved = dependencies[depIndex];
+    const resolved = dependencies.get(imp.specifier);
+    if (!resolved) {
+      throw new Error(`Failed to resolve import "${imp.specifier}" in "${filePath}".`);
+    }
 
     let replacement: string;
 
@@ -41,6 +43,12 @@ function rewriteModule(graph: ModuleGraph, filePath: string): string {
         "",
       );
       replacement = `module.exports.default = ${withoutExportDefault};`;
+    } else if (exp.reexportFrom) {
+        const resolved = dependencies.get(exp.reexportFrom);
+        if (!resolved) {
+          throw new Error(`Failed to resolve re-export "${exp.reexportFrom}" in "${filePath}".`);
+        }
+      replacement = `module.exports.${exp.exported} = require(${JSON.stringify(resolved)}).${exp.local};`;
     } else {
       // export const x = 1;  -> module.exports.x = (function() { const x = 1; return x; })
       const originalText = source.slice(exp.start, exp.end);
@@ -60,7 +68,8 @@ function rewriteModule(graph: ModuleGraph, filePath: string): string {
 
   edits.sort((a, b) => b.start - a.start);
   for (const edit of edits) {
-    source = source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
+    source =
+      source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
   }
 
   return source;
@@ -73,11 +82,11 @@ export function bundle(graph: ModuleGraph, entryPath: string): string {
   }
 
   const moduleEntries: string[] = [];
-  for ( const [filePath] of graph) {
+  for (const [filePath] of graph) {
     const rewritten = rewriteModule(graph, filePath);
     moduleEntries.push(
-        `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`
-    )
+      `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`,
+    );
   }
   return `
   var __modules__ = {};
