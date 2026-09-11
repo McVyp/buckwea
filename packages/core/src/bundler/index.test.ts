@@ -75,4 +75,67 @@ describe("bundle - with dependencies", () => {
     expect(result).toContain('require("/fake/math.ts").add');
     expect(result).toContain('module.exports.add = add');
   })
+
+  it("wires a file tha timports from two different dependencies", () => {
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/math.ts",
+        {
+          parsedModule: {
+            path: "/fake/math.ts",
+            source: "export const add = 1;",
+            imports: [],
+            exports: [{ exported: "add", local: "add", start: 0, end: 22}],
+            dynamicImports: [],
+          },
+          dependencies: [],
+        }
+      ],
+      [
+        "/fake/greet.ts",
+        {
+          parsedModule: {
+            path: "/fake/greet.ts",
+            source: "export const hello = 1;",
+            imports: [],
+            exports: [{ exported: "hello", local: "hello", start: 0, end: 23}],
+            dynamicImports: [],
+          },
+          dependencies: [],
+        }
+      ],
+      [
+        "/fake/entry.ts",
+        {
+          parsedModule: {
+            path: "/fake/entry.ts",
+            source: 
+              'import { add } from "./math.js";\nimport { hello } from "./greet.js";\nconsole.log(add, hello);',
+            imports: [
+              {
+                specifier: "./math.js",
+                bindings: "add",
+                local: "add",
+                start: 0,
+                end: 33,
+              },
+              {
+                specifier: "./greet.js",
+                bindings: "hello",
+                local: "hello",
+                start: 34,
+                end: 70,
+              }
+            ],
+            exports: [],
+            dynamicImports: [],
+          },
+          dependencies: ["/fake/math.ts", "/fake/greet.ts"],
+        }
+      ]
+    ]);
+    const result = bundle(graph, "/fake/entry.ts");
+    expect(result).toContain('require("/fake/math.ts").add');
+    expect(result).toContain('require("/fake/greet.ts").hello');
+  });
 })
