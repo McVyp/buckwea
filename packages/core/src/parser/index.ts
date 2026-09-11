@@ -112,6 +112,17 @@ export function parseModule(path: string, source: string): ParsedModule {
               });
             }
           }
+        } else if (
+          (exportNode.declaration.type === "FunctionDeclaration" ||
+          exportNode.declaration.type === "ClassDeclaration") &&
+            exportNode.declaration.id
+        ) {
+          exports.push({
+            exported: exportNode.declaration.id.name,
+            local: exportNode.declaration.id.name,
+            start: exportNode.start,
+            end: exportNode.end,
+          });
         }
       } else {
         // export { add }; or export { add } from "./math.js"
