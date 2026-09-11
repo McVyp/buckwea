@@ -1,15 +1,97 @@
 import { ModuleGraph } from "../module-graph/index.js";
 
-export function bundle(graph: ModuleGraph, entryPath: string): string {
-    const entryNode = graph.get(entryPath);
-    if (!entryNode) {
-        throw new Error(`Entry path "${entryPath}" not found in module graph.`)
+function rewriteModule(graph: ModuleGraph, filePath: string): string {
+  const node = graph.get(filePath);
+  if (!node) {
+    throw new Error(`Module "${filePath}" not found in module graph.`);
+  }
+
+  const { parsedModule, dependencies } = node;
+  let source = parsedModule.source;
+
+  const edits: { start: number; end: number; replacement: string }[] = [];
+
+  for (const imp of parsedModule.imports) {
+    const depIndex = parsedModule.imports.indexOf(imp);
+    const resolved = dependencies[depIndex];
+
+    let replacement: string;
+
+    if (imp.bindings === "default") {
+      replacement = `var ${imp.local} = require("${resolved}").default;`;
+    } else if (imp.bindings === "*") {
+      replacement = `var ${imp.local} = require("${resolved}");`;
+    } else {
+      replacement = `var ${imp.local} = require("${resolved}").${imp.bindings};`;
     }
 
-    if (entryNode.dependencies.length > 0) {
-        throw new Error(
-            "bundle() only supports a single module with no dependencies right now."
-        )
+    edits.push({
+      start: imp.start,
+      end: imp.end,
+      replacement,
+    });
+  }
+
+  for (const exp of parsedModule.exports) {
+    let replacement: string;
+    if (exp.exported === "default") {
+      const originalText = source.slice(exp.start, exp.end);
+      const withoutExportDefault = originalText.replace(
+        /^export\s+default\s+/,
+        "",
+      );
+      replacement = `module.exports.default = ${withoutExportDefault};`;
+    } else {
+      // export const x = 1;  -> module.exports.x = (function() { const x = 1; return x; })
+      const originalText = source.slice(exp.start, exp.end);
+      if (originalText.trim().startsWith("export {")) {
+        replacement = `module.exports.${exp.exported} = ${exp.local};`;
+      } else {
+        const withoutExport = originalText.replace(/^export\s+/, "");
+        replacement = `${withoutExport} module.exports.${exp.exported} = ${exp.local};`;
+      }
     }
-    return entryNode.parsedModule.source
+    edits.push({
+      start: exp.start,
+      end: exp.end,
+      replacement,
+    });
+  }
+
+  edits.sort((a, b) => b.start - a.start);
+  for (const edit of edits) {
+    source = source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
+  }
+
+  return source;
+}
+
+export function bundle(graph: ModuleGraph, entryPath: string): string {
+  const entryNode = graph.get(entryPath);
+  if (!entryNode) {
+    throw new Error(`Entry path "${entryPath}" not found in module graph.`);
+  }
+
+  const moduleEntries: string[] = [];
+  for ( const [filePath] of graph) {
+    const rewritten = rewriteModule(graph, filePath);
+    moduleEntries.push(
+        `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`
+    )
+  }
+  return `
+  var __modules__ = {};
+  var __cache__ = {};
+
+  function __require__(path) {
+  if (__cache__[path]) return __cache__[path].exports;
+  var module = { exports:  {} };
+  __cache__[path] = module;
+  __modules__[path](module, module.exports, __require__);
+  return module.exports;
+  }
+  
+  ${moduleEntries.join("\n")}
+  return __require__(${JSON.stringify(entryPath)});
+  `.trim();
 }
