@@ -251,4 +251,50 @@ describe("bundle - with dependencies", () => {
     const result = bundle(graph, "/fake/barrel.ts");
     expect(result).toContain('require("/fake/math.ts").add');
   });
+
+  it("drops an unused export's assignment while keeping its declaration", () => {
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/math.ts",
+        {
+          parsedModule: {
+            path: "/fake/math.ts",
+            source: "export const add = 1;\nexport const subtract = 2;",
+            imports: [],
+            exports: [
+              { exported: "add", local: "add", start: 0, end: 22 },
+              { exported: "subtract", local: "subtract", start: 23, end: 50 },
+            ],
+            dynamicImports: [],
+          },
+          dependencies: new Map(),
+        },
+      ],
+      [
+        "/fake/entry.ts",
+        {
+          parsedModule: {
+            path: "/fake/entry.ts",
+            source: 'import { add } from "./math.js";\nconsole.log(add);',
+            imports: [
+              {
+                specifier: "./math.js",
+                bindings: "add",
+                local: "add",
+                start: 0,
+                end: 33,
+              },
+            ],
+            exports: [],
+            dynamicImports: [],
+          },
+          dependencies: new Map([["./math.js", "/fake/math.ts"]]),
+        },
+      ],
+    ]);
+    const result = bundle(graph, "/fake/entry.ts");
+    expect(result).toContain("module.exports.add = add");
+    expect(result).not.toContain("module.exports.subtract = subtract");
+    expect(result).toContain("const subtract = 2");
+  });
 });
