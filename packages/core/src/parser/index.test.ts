@@ -54,6 +54,17 @@ describe("parseModule - static imports", () => {
     const result = parseModule("/fake/entry.ts", "console.log('hello');");
     expect(result.imports).toMatchObject([]);
   });
+
+  it("extracats a side-effect-only import wiht no bingdings", () => {
+    const result = parseModule("/fake/entry.ts", 'import "./setup.js";');
+    expect(result.imports).toMatchObject([
+      {
+        specifier: "./setup.js",
+        bindings: "side-effect",
+        local: "",
+      },
+    ]);
+  });
 });
 
 describe("parseModule - named exports", () => {
@@ -92,7 +103,9 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "export default function foo() {}",
     );
-    expect(result.exports).toMatchObject([{ exported: "default", local: "foo" }]);
+    expect(result.exports).toMatchObject([
+      { exported: "default", local: "foo" },
+    ]);
   });
 
   it("extracts an anonymous default function export", () => {
@@ -100,7 +113,9 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "export default function() {}",
     );
-    expect(result.exports).toMatchObject([{ exported: "default", local: "default" }]);
+    expect(result.exports).toMatchObject([
+      { exported: "default", local: "default" },
+    ]);
   });
 
   it("extracts a default export of an expression", () => {
@@ -108,7 +123,9 @@ describe("parseModule - default exports", () => {
       "/fake/entry.ts",
       "const add = 1; export default add;",
     );
-    expect(result.exports).toMatchObject([{ exported: "default", local: "default" }]);
+    expect(result.exports).toMatchObject([
+      { exported: "default", local: "default" },
+    ]);
   });
 });
 

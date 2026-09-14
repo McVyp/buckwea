@@ -56,6 +56,15 @@ export function parseModule(path: string, source: string): ParsedModule {
     if (node.type === "ImportDeclaration") {
       const importNode = node as ImportDeclaration;
       const specifier = importNode.source.value as string;
+      if (importNode.specifiers.length === 0) {
+        imports.push({
+          specifier,
+          bindings: "side-effect",
+          local: "",
+          start: importNode.start,
+          end: importNode.end,
+        });
+      }
       for (const spec of importNode.specifiers) {
         if (spec.type === "ImportSpecifier") {
           // named import: import { add } from "./math.js"
@@ -114,8 +123,8 @@ export function parseModule(path: string, source: string): ParsedModule {
           }
         } else if (
           (exportNode.declaration.type === "FunctionDeclaration" ||
-          exportNode.declaration.type === "ClassDeclaration") &&
-            exportNode.declaration.id
+            exportNode.declaration.type === "ClassDeclaration") &&
+          exportNode.declaration.id
         ) {
           exports.push({
             exported: exportNode.declaration.id.name,
