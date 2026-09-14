@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ParsedModule } from "../parser";
 import { ModuleGraph } from "../module-graph";
-import { findUsedExports } from ".";
+import { findMustKeepModules, findUsedExports } from ".";
 
 function makeModule(
   path: string,
@@ -234,5 +234,70 @@ describe("findUsedExports", () => {
     const used = findUsedExports(graph);
 
     expect(used.get("/math.ts")).toEqual(new Set(["add", "subtract"]));
+  });
+});
+
+describe("findMustKeepModules", () => {
+  it("marks a mnodule as must-keep when it's imported only for its side effects", () => {
+    const graph: ModuleGraph = new Map();
+
+    graph.set("/entry.ts", {
+      parsedModule: makeModule("/entry.ts", {
+        imports: [
+          {
+            specifier: "./setup.js",
+            bindings: "side-effect",
+            local: "",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map([["./setup.js", "/setup.ts"]]),
+    });
+
+    graph.set("/setup.ts", {
+      parsedModule: makeModule("/setup.ts", {}),
+      dependencies: new Map(),
+    });
+
+    const mustKeep = findMustKeepModules(graph);
+    expect(mustKeep.has("/setup.ts")).toBe(true);
+  });
+
+  it("does not mark a normally-imported module as must-keep", () => {
+    const graph: ModuleGraph = new Map();
+
+    graph.set("/entry.ts", {
+      parsedModule: makeModule("/entry.ts", {
+        imports: [
+          {
+            specifier: "./math.js",
+            bindings: "add",
+            local: "add",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map([["./math.js", "/math.ts"]]),
+    });
+
+    graph.set("/math.ts", {
+      parsedModule: makeModule("/math.ts", {
+        exports: [
+          {
+            exported: "add",
+            local: "add",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map(),
+    });
+
+    const mustKeep = findMustKeepModules(graph);
+    expect(mustKeep.has("/math.ts")).toBe(false);
   });
 });

@@ -58,3 +58,21 @@ export function findUsedExports(graph: ModuleGraph): UsedExports {
   }
   return used;
 }
+
+export function findMustKeepModules(graph: ModuleGraph): Set<string> {
+  const mustKeep = new Set<string>();
+
+  for (const [, node] of graph) {
+    for (const imp of node.parsedModule.imports) {
+      if (imp.bindings !== "side-effect") continue;
+
+      const resolved = node.dependencies.get(imp.specifier);
+
+      if (!resolved) {
+        throw new Error(`Failed to resolve import: ${imp.specifier}`);
+      }
+      mustKeep.add(resolved);
+    }
+  }
+  return mustKeep;
+}
