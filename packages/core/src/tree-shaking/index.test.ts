@@ -235,6 +235,53 @@ describe("findUsedExports", () => {
 
     expect(used.get("/math.ts")).toEqual(new Set(["add", "subtract"]));
   });
+
+  it("terminates on a circular re-rexport chain instead of looping forever", () => {
+    const graph: ModuleGraph = new Map();
+
+    graph.set("/entry.ts", {
+      parsedModule: makeModule("/entry.ts", {
+        imports: [
+          { specifier: "./a.js", bindings: "x", local: "x", start: 0, end: 0 },
+        ],
+      }),
+      dependencies: new Map([["./a.js", "/a.ts"]]),
+    });
+
+    graph.set("/a.ts", {
+      parsedModule: makeModule("/a.ts", {
+        exports: [
+          {
+            exported: "x",
+            local: "x",
+            reexportFrom: "./b.js",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map([["./b.js", "/b.ts"]]),
+    });
+
+    graph.set("/b.ts", {
+      parsedModule: makeModule("/b.ts", {
+        exports: [
+          {
+            exported: "x",
+            local: "x",
+            reexportFrom: "./a.js",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map([["./a.js", "/a.ts"]]),
+    });
+    const used = findUsedExports(graph);
+
+    expect(used.get("/a.ts")?.has("x")).toBe(true);
+    expect(used.get("/b.ts")?.has("x")).toBe(true);
+  });
 });
 
 describe("findMustKeepModules", () => {

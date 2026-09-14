@@ -19,5 +19,7 @@ describe("bundle - end to end with real files", () => {
     expect(result).toContain("function subtract(a: number, b: number): number");
     expect(result).toContain("require(");
     expect(result).not.toMatch(/^import /m);
+    expect(result).toContain("module.exports.add = add");
+    expect(result).not.toContain("module.exports.subtract = subtract");
   });
 });
