@@ -21,6 +21,12 @@ export function findUsedExports(graph: ModuleGraph): UsedExports {
       }
 
       if (imp.bindings === "*") {
+        const targetNode = graph.get(resolved);
+        if (targetNode) {
+          for (const epx of targetNode.parsedModule.exports) {
+            markUsed(resolved, epx.exported);
+          }
+        }
         continue;
       }
       markUsed(resolved, imp.bindings);

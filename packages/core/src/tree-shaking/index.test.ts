@@ -198,4 +198,41 @@ describe("findUsedExports", () => {
     const used = findUsedExports(graph);
     expect(used.get("/c.ts")?.has("x")).toBe(true);
   });
+
+  it("marks all exports used when imported via a namespace improt", () => {
+    const graph: ModuleGraph = new Map();
+    graph.set("/entry.ts", {
+      parsedModule: makeModule("/entry.ts", {
+        imports: [
+          {
+            specifier: "./math.js",
+            bindings: "*",
+            local: "math",
+            start: 0,
+            end: 0,
+          },
+        ],
+      }),
+      dependencies: new Map([["./math.js", "/math.ts"]]),
+    });
+
+    graph.set("/math.ts", {
+      parsedModule: makeModule("/math.ts", {
+        exports: [
+          {
+            exported: "add",
+            local: "add",
+            start: 0,
+            end: 0,
+          },
+          { exported: "subtract", local: "subtract", start: 0, end: 0 },
+        ],
+      }),
+      dependencies: new Map(),
+    });
+
+    const used = findUsedExports(graph);
+
+    expect(used.get("/math.ts")).toEqual(new Set(["add", "subtract"]));
+  });
 });
