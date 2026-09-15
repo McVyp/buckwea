@@ -16,13 +16,14 @@ describe("bundle - trivial case", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
     ]);
 
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result).toContain("const x = 1;");
-    expect(result).toContain('__require__("/fake/entry.ts")');
+    expect(result.entry).toContain("const x = 1;");
+    expect(result.entry).toContain('__require__("/fake/entry.ts")');
   });
 
   it("throws if the entry path isn't in the graph", () => {
@@ -45,6 +46,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -66,13 +68,14 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
+          dynamicDependencies: new Map()
         },
       ],
     ]);
 
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result).toContain('require("/fake/math.ts").add');
-    expect(result).toContain("module.exports.add = add");
+    expect(result.entry).toContain('require("/fake/math.ts").add');
+    expect(result.entry).toContain("module.exports.add = add");
   });
 
   it("wires a file tha timports from two different dependencies", () => {
@@ -88,6 +91,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -101,6 +105,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -133,12 +138,16 @@ describe("bundle - with dependencies", () => {
             ["./math.js", "/fake/math.ts"],
             ["./greet.js", "/fake/greet.ts"],
           ]),
+          dynamicDependencies: new Map([
+            ["./math.js", "/fake/math.ts"],
+            ["./greet.js", "/fake/greet.ts"],
+          ]),
         },
       ],
     ]);
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result).toContain('require("/fake/math.ts").add');
-    expect(result).toContain('require("/fake/greet.ts").hello');
+    expect(result.entry).toContain('require("/fake/math.ts").add');
+    expect(result.entry).toContain('require("/fake/greet.ts").hello');
   });
 
   it("wires a multi-level dependency chain (A imports B, B imports C)", () => {
@@ -154,6 +163,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -179,6 +189,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./c.js", "/fake/c.ts"]]),
+          dynamicDependencies: new Map([["./c.js", "/fake/c.ts"]]),
         },
       ],
       [
@@ -200,15 +211,16 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./b.js", "/fake/b.ts"]]),
+          dynamicDependencies: new Map([["./b.js", "/fake/b.ts"]]),
         },
       ],
     ]);
 
     const result = bundle(graph, "/fake/a.ts");
-    expect(result).toContain('require("/fake/b.ts").doubled');
-    expect(result).toContain('require("/fake/c.ts").value');
-    expect(result).toContain("module.exports.value = value");
-    expect(result).toContain("module.exports.doubled = doubled");
+    expect(result.entry).toContain('require("/fake/b.ts").doubled');
+    expect(result.entry).toContain('require("/fake/c.ts").value');
+    expect(result.entry).toContain("module.exports.value = value");
+    expect(result.entry).toContain("module.exports.doubled = doubled");
   });
 
   it("handles a re-export (export { add } from another file", () => {
@@ -224,6 +236,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -245,11 +258,12 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
+          dynamicDependencies: new Map()
         },
       ],
     ]);
     const result = bundle(graph, "/fake/barrel.ts");
-    expect(result).toContain('require("/fake/math.ts").add');
+    expect(result.entry).toContain('require("/fake/math.ts").add');
   });
 
   it("drops an unused export's assignment while keeping its declaration", () => {
@@ -268,6 +282,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map(),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -289,12 +304,13 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
+          dynamicDependencies: new Map()
         },
       ],
     ]);
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result).toContain("module.exports.add = add");
-    expect(result).not.toContain("module.exports.subtract = subtract");
-    expect(result).toContain("const subtract = 2");
+    expect(result.entry).toContain("module.exports.add = add");
+    expect(result.entry).not.toContain("module.exports.subtract = subtract");
+    expect(result.entry).toContain("const subtract = 2");
   });
 });

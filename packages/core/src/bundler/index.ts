@@ -1,3 +1,4 @@
+import { assignChunks } from "../chunking/index.js";
 import { ModuleGraph } from "../module-graph/index.js";
 import { findUsedExports, UsedExports } from "../tree-shaking/index.js";
 
@@ -11,7 +12,7 @@ function rewriteModule(
     throw new Error(`Module "${filePath}" not found in module graph.`);
   }
 
-  const { parsedModule, dependencies } = node;
+  const { parsedModule, dependencies, dynamicDependencies } = node;
   const usedHere = usedExports.get(filePath);
   let source = parsedModule.source;
 
@@ -39,6 +40,22 @@ function rewriteModule(
       start: imp.start,
       end: imp.end,
       replacement,
+    });
+  }
+
+  for (const dynImp of parsedModule.dynamicImports) {
+    const resolved = dynamicDependencies.get(dynImp.specifier);
+    if (!resolved) {
+      throw new Error(
+        `Failed to resolve dynamic import "${dynImp.specifier}" in "${filePath}".`,
+      );
+    }
+    const replacements = `__loadChunk__(${JSON.stringify(resolved)}).then(function() { return __require__(${JSON.stringify(resolved)})});`;
+
+    edits.push({
+      start: dynImp.start,
+      end: dynImp.end,
+      replacement: replacements,
     });
   }
 
@@ -94,7 +111,27 @@ function rewriteModule(
   return source;
 }
 
-export function bundle(graph: ModuleGraph, entryPath: string): string {
+function buildModuleEntries(
+  graph: ModuleGraph,
+  members: Set<string>,
+  usedExports: Map<string, Set<string>>,
+): string {
+  const moduleEntries: string[] = [];
+  for (const filePath of members) {
+    const rewritten = rewriteModule(graph, filePath, usedExports);
+    moduleEntries.push(
+      `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`,
+    );
+  }
+  return moduleEntries.join("\n");
+}
+
+export interface BundleOutput {
+  entry: string;
+  chunks: Map<string, string>;
+}
+
+export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
   const entryNode = graph.get(entryPath);
   if (!entryNode) {
     throw new Error(`Entry path "${entryPath}" not found in module graph.`);
@@ -107,30 +144,39 @@ export function bundle(graph: ModuleGraph, entryPath: string): string {
     entrySet = new Set();
     usedExports.set(entryPath, entrySet);
   }
+
   for (const exp of entryNode.parsedModule.exports) {
     entrySet.add(exp.exported);
   }
 
-  const moduleEntries: string[] = [];
-  for (const [filePath] of graph) {
-    const rewritten = rewriteModule(graph, filePath, usedExports);
-    moduleEntries.push(
-      `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`,
-    );
-  }
-  return `
+  const { chunks: chunkMembers } = assignChunks(graph, entryPath);
+
+  const entryMembers = chunkMembers.get(entryPath)!;
+  const entryModuleEntries = buildModuleEntries(
+    graph,
+    entryMembers,
+    usedExports,
+  );
+
+  const entryOutput = `
   var __modules__ = {};
   var __cache__ = {};
 
   function __require__(path) {
   if (__cache__[path]) return __cache__[path].exports;
-  var module = { exports:  {} };
+  var module = { exports: {} };
   __cache__[path] = module;
   __modules__[path](module, module.exports, __require__);
   return module.exports;
-  }
-  
-  ${moduleEntries.join("\n")}
+}
+  ${entryModuleEntries}
   return __require__(${JSON.stringify(entryPath)});
   `.trim();
+
+  const chunkOutputs = new Map<string, string>();
+  for (const [chunkId, members] of chunkMembers) {
+    if (chunkId === entryPath) continue;
+    chunkOutputs.set(chunkId, buildModuleEntries(graph, members, usedExports));
+  }
+  return { entry: entryOutput, chunks: chunkOutputs };
 }

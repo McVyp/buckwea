@@ -14,12 +14,12 @@ describe("bundle - end to end with real files", () => {
 
     const result = bundle(graph, entryPath);
 
-    expect(result).toContain("__modules__");
-    expect(result).toContain("function add(a: number, b: number): number");
-    expect(result).toContain("function subtract(a: number, b: number): number");
-    expect(result).toContain("require(");
-    expect(result).not.toMatch(/^import /m);
-    expect(result).toContain("module.exports.add = add");
-    expect(result).not.toContain("module.exports.subtract = subtract");
+    expect(result.entry).toContain("__modules__");
+    expect(result.entry).toContain("function add(a: number, b: number): number");
+    expect(result.entry).toContain("function subtract(a: number, b: number): number");
+    expect(result.entry).toContain("require(");
+    expect(result.entry).not.toMatch(/^import /m);
+    expect(result.entry).toContain("module.exports.add = add");
+    expect(result.entry).not.toContain("module.exports.subtract = subtract");
   });
 });
