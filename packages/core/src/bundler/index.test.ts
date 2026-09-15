@@ -68,7 +68,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
-          dynamicDependencies: new Map()
+          dynamicDependencies: new Map(),
         },
       ],
     ]);
@@ -258,7 +258,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
-          dynamicDependencies: new Map()
+          dynamicDependencies: new Map(),
         },
       ],
     ]);
@@ -304,7 +304,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./math.js", "/fake/math.ts"]]),
-          dynamicDependencies: new Map()
+          dynamicDependencies: new Map(),
         },
       ],
     ]);
@@ -312,5 +312,64 @@ describe("bundle - with dependencies", () => {
     expect(result.entry).toContain("module.exports.add = add");
     expect(result.entry).not.toContain("module.exports.subtract = subtract");
     expect(result.entry).toContain("const subtract = 2");
+  });
+});
+
+describe("bundle - trivial chunking case", () => {
+  it("produces two chunks for one entry with one dynamic import", () => {
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/lazy.ts",
+        {
+          parsedModule: {
+            path: "/fake/lazy.ts",
+            source: "export const value = 1;",
+            imports: [],
+            exports: [{ exported: "value", local: "value", start: 0, end: 21 }],
+            dynamicImports: [],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map(),
+        },
+      ],
+      [
+        "/fake/entry.ts",
+        {
+          parsedModule: {
+            path: "/fake/entry.ts",
+            source: 'import("./lazy.js");',
+            imports: [],
+            exports: [],
+            dynamicImports: [
+              {
+                specifier: "./lazy.js",
+                start: 0,
+                end: 20,
+              },
+            ],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map([["./lazy.js", "/fake/lazy.ts"]]),
+        },
+      ],
+    ]);
+
+    const result = bundle(graph, "/fake/entry.ts");
+
+    // excatly one chunk besides the entry chunk
+    expect(result.chunks.size).toBe(1);
+    expect(result.chunks.has("/fake/lazy.ts")).toBe(true);
+
+    // entry's dynamci import call site was rewritten to reference the correct chunk id and correct target path
+    expect(result.entry).toContain('__loadChunk__("/fake/lazy.ts")');
+    expect(result.entry).toContain('__require__("/fake/lazy.ts")');
+
+    // the entry chunk itself should not contain the code of the lazy chunk
+    expect(result.entry).not.toContain("module.exports.value");
+
+    // lazy chunk should contain its own code
+    const lazyChunk = result.chunks.get("/fake/lazy.ts");
+    expect(lazyChunk).toContain("module.exports.value = value");
+    expect(lazyChunk).toContain('__modules__["/fake/lazy.ts"]');
   });
 });

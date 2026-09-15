@@ -151,6 +151,21 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
 
   const { chunks: chunkMembers } = assignChunks(graph, entryPath);
 
+  for (const chunkId of chunkMembers.keys()) {
+    if (chunkId === entryPath) continue;
+    const chunkNode = graph.get(chunkId);
+    if (!chunkNode) continue;
+    let chunkSet = usedExports.get(chunkId);
+    if (!chunkSet) {
+      chunkSet = new Set();
+      usedExports.set(chunkId, chunkSet);
+    }
+
+    for (const exp of chunkNode.parsedModule.exports) {
+      chunkSet.add(exp.exported);
+    }
+  }
+
   const entryMembers = chunkMembers.get(entryPath)!;
   const entryModuleEntries = buildModuleEntries(
     graph,
