@@ -5,6 +5,7 @@ import { resolve } from "../resolver/index.js";
 export interface ModuleGraphNode {
   parsedModule: ParsedModule;
   dependencies: Map<string, string>;
+  dynamicDependencies: Map<string, string>;
 }
 
 export type ModuleGraph = Map<string, ModuleGraphNode>;
@@ -21,6 +22,7 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
     const parsedModule = parseModule(filePath, source);
 
     const dependencies = new Map<string, string>();
+    const dynamicDependencies = new Map<string, string>();
 
     // static imports
     for (const imp of parsedModule.imports) {
@@ -41,12 +43,25 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
       }
     }
 
+    for (const dynImp of parsedModule.dynamicImports) {
+      const resolved = resolve({
+        importer: filePath,
+        specifier: dynImp.specifier,
+      });
+      dynamicDependencies.set(dynImp.specifier, resolved);
+    }
+
     graph.set(filePath, {
       parsedModule,
       dependencies,
+      dynamicDependencies,
     });
 
     for (const resolvedPath of dependencies.values()) {
+      visit(resolvedPath);
+    }
+    
+    for (const resolvedPath of dynamicDependencies.values()) {
       visit(resolvedPath);
     }
   }

@@ -85,3 +85,112 @@ describe("buildModuleGraph", () => {
     ).toEqual([join(dir, "shared.ts")]);
   });
 });
+
+describe("buildModuleGraph - dynamic imports", () => {
+  it("tracks a linear dynamic import in dynamicDependencies, not dependencies", () => {
+    const dir = makeFixtures({
+      "a.ts": `const mod = await import("./b.js"); export const a = 1;`,
+      "b.ts": `export const b = 1;`,
+    });
+
+    const graph = buildModuleGraph(join(dir, "a.ts"));
+
+    expect(graph.size).toBe(2);
+    expect(graph.get(join(dir, "a.ts"))!.dependencies.size).toBe(0);
+    expect(
+      Array.from(graph.get(join(dir, "a.ts"))!.dynamicDependencies.values()),
+    ).toEqual([join(dir, "b.ts")]);
+
+    expect(graph.has(join(dir, "b.ts"))).toBe(true);
+  });
+
+  it("handles branching: one file dynamically importing two others", () => {
+    const dir = makeFixtures({
+      "a.ts":`
+  await import("./b.js");
+  await import("./c.js");
+  export const a = 1;
+ `    ,
+ "b.ts": `export const b = 1;`,
+ "c.ts": `export const c = 1;`,
+      });
+
+      const graph = buildModuleGraph(join(dir, "a.ts"));
+
+      expect(graph.size).toBe(3);
+      expect(graph.get(join(dir, "a.ts"))!.dependencies.size).toBe(0);
+      const aDynDeps = Array.from(
+        graph.get(join(dir, "a.ts"))!.dynamicDependencies.values(),
+      ).sort();
+      expect(aDynDeps).toEqual([join(dir, "b.ts"), join(dir, "c.ts")].sort());
+  });
+
+  it("terminates on a circular dynamic import instead of infinite-looping", () => {
+    const dir = makeFixtures({
+      "a.ts": `await import("./b.js"); export const a = 1;`,
+      "b.ts": `await import("./a.js"); export const b = 1;`
+    });
+
+    const graph = buildModuleGraph(join(dir, "a.ts"));
+    expect(graph.size).toBe(2);
+
+    expect(
+      Array.from(
+        graph.get(join(dir, "a.ts"))!.dynamicDependencies.values(),
+      ),
+    ).toEqual([join(dir, "b.ts")])
+
+    expect(
+      Array.from(
+        graph.get(join(dir, "b.ts"))!.dynamicDependencies.values(),
+      ),
+    ).toEqual([join(dir, "a.ts")]);
+  });
+
+  it("only visits a shared dynamic dependency once (diamond shape)", () => {
+    const dir = makeFixtures({
+      "a.ts": `
+      await import("./b.js");
+      await import("./c.js");
+      export const a = 1;
+      `,
+      "b.ts": `await import ("./shared.js"); export const b = 1;`,
+      "c.ts": `await import ("./shared.js"); export const c = 1;`,
+      "shared.ts": `export const shared = 1;`
+    });
+
+    const graph = buildModuleGraph(join(dir, "a.ts"));
+    expect(graph.size).toBe(4);
+    expect(
+      Array.from(graph.get(join(dir, "shared.ts"))!.dynamicDependencies.values())
+    ).toEqual([]);
+    expect(
+      Array.from(graph.get(join(dir, "b.ts"))!.dynamicDependencies.values()),
+    ).toEqual([join(dir, "shared.ts")]);
+    expect(
+      Array.from(graph.get(join(dir, "c.ts"))!.dynamicDependencies.values()),
+    ).toEqual([join(dir, "shared.ts")]);
+  });
+
+  it("keeps static and dynamic edges in separate maps on the same node", () => {
+    const dir = makeFixtures({
+      "a.ts": `
+      import { b } from "./b.js";
+      await import("./c.js");
+      export const a = b;
+      `,
+      "b.ts": `export const b = 1;`,
+      "c.ts": `export const c = 1;`
+    });
+
+    const graph = buildModuleGraph(join(dir, "a.ts"));
+
+    expect(graph.size).toBe(3);
+    expect(
+      Array.from(graph.get(join(dir, "a.ts"))!.dependencies.values()),
+      ).toEqual([join(dir, "b.ts")]);
+    expect(
+      Array.from(graph.get(join(dir, "a.ts"))!.dynamicDependencies.values()),
+    ).toEqual([join(dir, "c.ts")]);
+  });
+});
