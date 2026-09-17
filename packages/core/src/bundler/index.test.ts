@@ -189,7 +189,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./c.js", "/fake/c.ts"]]),
-          dynamicDependencies: new Map([["./c.js", "/fake/c.ts"]]),
+          dynamicDependencies: new Map(),
         },
       ],
       [
@@ -211,7 +211,7 @@ describe("bundle - with dependencies", () => {
             dynamicImports: [],
           },
           dependencies: new Map([["./b.js", "/fake/b.ts"]]),
-          dynamicDependencies: new Map([["./b.js", "/fake/b.ts"]]),
+          dynamicDependencies: new Map(),
         },
       ],
     ]);

@@ -149,9 +149,9 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
     entrySet.add(exp.exported);
   }
 
-  const { chunks: chunkMembers } = assignChunks(graph, entryPath);
+  const { chunks: chunkMembers, dynamicRoots } = assignChunks(graph, entryPath);
 
-  for (const chunkId of chunkMembers.keys()) {
+  for (const chunkId of dynamicRoots) {
     if (chunkId === entryPath) continue;
     const chunkNode = graph.get(chunkId);
     if (!chunkNode) continue;
