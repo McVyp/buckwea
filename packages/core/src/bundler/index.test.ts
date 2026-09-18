@@ -373,3 +373,117 @@ describe("bundle - trivial chunking case", () => {
     expect(lazyChunk).toContain('__modules__["/fake/lazy.ts"]');
   });
 });
+
+describe("bundle - shared dependency case", () => {
+  it("extracts a module shared by two dynamic-import chunks into its own chunk", () => {
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/shared.ts",
+        {
+          parsedModule: {
+            path: "/fake/shared.ts",
+            source: "export const util = 1;",
+            imports :[],
+            exports: [{ exported: "util", local: "util", start: 0, end: 23 }],
+            dynamicImports: [],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map(),
+        }
+      ],
+      [
+        "/fake/lazyA.ts",
+        {
+          parsedModule: {
+            path: "/fake/lazyA.ts",
+            source: 'import { util } from "./shared.js";\nexport const a = util;',
+            imports: [
+              {
+                specifier: "./shared.js",
+                bindings: "util",
+                local: "util",
+                start: 0,
+                end: 37,
+              }
+            ],
+            exports: [{ exported: "a", local: "a", start: 38, end: 58 }],
+            dynamicImports: [],
+          },
+          dependencies: new Map([["./shared.js", "/fake/shared.ts"]]),
+          dynamicDependencies: new Map(),
+        }
+      ],
+      [
+        "/fake/lazyB.ts",
+        {
+          parsedModule: {
+              path: "/fake/lazyB.ts",
+              source: 'import { util } from "./shared.js";\nexport const b = util;',
+              imports: [
+                {
+                  specifier: "./shared.js",
+                  bindings: "util",
+                  local: "util",
+                  start: 0,
+                  end: 37,
+                }
+              ],
+              exports: [{ exported: "b", local: "b", start: 38, end: 58 }],
+              dynamicImports: [],
+          },
+          dependencies: new Map([["./shared.js", "/fake/shared.ts"]]),
+          dynamicDependencies: new Map(),
+        }
+      ],
+      [
+        "/fake/entry.ts",
+        {
+          parsedModule: {
+            path: "/fake/entry.ts",
+            source: 'import("./lazyA.js");\nimport("./lazyB.js");',
+            imports: [],
+            exports: [],
+            dynamicImports: [
+              {
+                specifier: "./lazyA.js",
+                start: 0,
+                end: 21,
+              },
+              {
+                specifier: "./lazyB.js",
+                start: 23,
+                end: 44,
+              }
+            ],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map([
+            ["./lazyA.js", "/fake/lazyA.ts"],
+            ["./lazyB.js", "/fake/lazyB.ts"]
+          ]),
+        }
+      ]
+    ]);
+
+    const result = bundle(graph, "/fake/entry.ts");
+
+    // three chunks besides the entry chunk
+    expect(result.chunks.size).toBe(3);
+    expect(result.chunks.has("/fake/lazyA.ts")).toBe(true);
+    expect(result.chunks.has("/fake/lazyB.ts")).toBe(true);
+    expect(result.chunks.has("/fake/shared.ts")).toBe(true);
+
+    // the shared module
+    const sharedChunk = result.chunks.get("/fake/shared.ts");
+    expect(sharedChunk).toContain("module.exports.util = util");
+
+
+    const lazyAChunk = result.chunks.get("/fake/lazyA.ts");
+    const lazyBChunk = result.chunks.get("/fake/lazyB.ts");
+    expect(lazyAChunk).not.toContain("module.exports.util = util");
+    expect(lazyBChunk).not.toContain("module.exports.util = util");
+
+    expect(lazyAChunk).toContain('require(\"/fake/shared.ts\").util');
+    expect(lazyBChunk).toContain('require(\"/fake/shared.ts\").util');
+  });
+});
