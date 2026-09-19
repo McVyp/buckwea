@@ -34,6 +34,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./math.js", "/math.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/math.ts", {
@@ -41,6 +42,7 @@ describe("findUsedExports", () => {
         exports: [{ exported: "add", local: "add", start: 0, end: 0 }],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
     const used = findUsedExports(graph);
     expect(used.get("/math.ts")).toEqual(new Set(["add"]));
@@ -62,6 +64,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./math.js", "/math.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/math.ts", {
@@ -82,6 +85,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
     const used = findUsedExports(graph);
 
@@ -99,6 +103,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./a.js", "/a.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/a.ts", {
@@ -114,6 +119,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./b.js", "/b.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/b.ts", {
@@ -128,6 +134,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
 
     const used = findUsedExports(graph);
@@ -150,6 +157,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./a.js", "/a.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/a.ts", {
@@ -165,6 +173,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./b.js", "/b.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/b.ts", {
@@ -180,6 +189,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./c.js", "/c.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/c.ts", {
@@ -194,6 +204,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
     const used = findUsedExports(graph);
     expect(used.get("/c.ts")?.has("x")).toBe(true);
@@ -214,6 +225,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./math.js", "/math.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/math.ts", {
@@ -229,6 +241,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
 
     const used = findUsedExports(graph);
@@ -246,6 +259,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./a.js", "/a.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/a.ts", {
@@ -261,6 +275,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./b.js", "/b.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/b.ts", {
@@ -276,6 +291,7 @@ describe("findUsedExports", () => {
         ],
       }),
       dependencies: new Map([["./a.js", "/a.ts"]]),
+      dynamicDependencies: new Map(),
     });
     const used = findUsedExports(graph);
 
@@ -301,11 +317,13 @@ describe("findMustKeepModules", () => {
         ],
       }),
       dependencies: new Map([["./setup.js", "/setup.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/setup.ts", {
       parsedModule: makeModule("/setup.ts", {}),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
 
     const mustKeep = findMustKeepModules(graph);
@@ -328,6 +346,7 @@ describe("findMustKeepModules", () => {
         ],
       }),
       dependencies: new Map([["./math.js", "/math.ts"]]),
+      dynamicDependencies: new Map(),
     });
 
     graph.set("/math.ts", {
@@ -342,6 +361,7 @@ describe("findMustKeepModules", () => {
         ],
       }),
       dependencies: new Map(),
+      dynamicDependencies: new Map(),
     });
 
     const mustKeep = findMustKeepModules(graph);
