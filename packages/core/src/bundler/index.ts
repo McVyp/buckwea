@@ -2,11 +2,21 @@ import { assignChunks } from "../chunking/index.js";
 import { ModuleGraph } from "../module-graph/index.js";
 import { findUsedExports, UsedExports } from "../tree-shaking/index.js";
 
-function rewriteModule(
+export interface Mapping {
+  generatedStart: number;
+  originalStart: number;
+}
+
+export interface RewriteResult {
+  code: string;
+  mappings: Mapping[];
+}
+
+export function rewriteModule(
   graph: ModuleGraph,
   filePath: string,
   usedExports: UsedExports,
-): string {
+): RewriteResult {
   const node = graph.get(filePath);
   if (!node) {
     throw new Error(`Module "${filePath}" not found in module graph.`);
@@ -14,7 +24,7 @@ function rewriteModule(
 
   const { parsedModule, dependencies, dynamicDependencies } = node;
   const usedHere = usedExports.get(filePath);
-  let source = parsedModule.source;
+  const source = parsedModule.source;
 
   const edits: { start: number; end: number; replacement: string }[] = [];
 
@@ -102,13 +112,27 @@ function rewriteModule(
     });
   }
 
-  edits.sort((a, b) => b.start - a.start);
+  edits.sort((a, b) => a.start - b.start);
+  let code = "";
+  const mappings: Mapping[] = [];
+  let cursor = 0;
+
   for (const edit of edits) {
-    source =
-      source.slice(0, edit.start) + edit.replacement + source.slice(edit.end);
+    if (edit.start > cursor) {
+      mappings.push({ generatedStart: code.length, originalStart: cursor });
+      code += source.slice(cursor, edit.start);
+    }
+    mappings.push({ generatedStart: code.length, originalStart: edit.start });
+    code += edit.replacement;
+    cursor = edit.end;
   }
 
-  return source;
+  if (cursor < source.length) {
+    mappings.push({ generatedStart: code.length, originalStart: cursor });
+    code += source.slice(cursor);
+  }
+
+  return { code, mappings };
 }
 
 function buildModuleEntries(
@@ -118,7 +142,7 @@ function buildModuleEntries(
 ): string {
   const moduleEntries: string[] = [];
   for (const filePath of members) {
-    const rewritten = rewriteModule(graph, filePath, usedExports);
+    const { code: rewritten } = rewriteModule(graph, filePath, usedExports);
     moduleEntries.push(
       `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`,
     );
