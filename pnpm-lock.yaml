@@ -143,6 +143,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@jridgewell/sourcemap-codec':
+        specifier: ^1.6.0
+        version: 1.6.0
       acorn:
         specifier: ^8.18.0
         version: 8.18.0
