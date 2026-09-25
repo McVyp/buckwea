@@ -146,7 +146,9 @@ export function rewriteModule(
       mappings.push({ generatedStart: code.length, originalStart: cursor });
       code += source.slice(cursor, edit.start);
     }
-    mappings.push({ generatedStart: code.length, originalStart: edit.start });
+    if (edit.replacement !== "") {
+      mappings.push({ generatedStart: code.length, originalStart: edit.start });
+    }
     code += edit.replacement;
     cursor = edit.end;
   }

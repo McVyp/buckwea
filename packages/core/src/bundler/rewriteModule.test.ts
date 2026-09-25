@@ -190,7 +190,7 @@ describe("rewriteModule - source mappings", () => {
     ]);
   });
 
-  it("mappings are laywas in ascending generatedStart order", () => {
+  it("mappings are always in ascending generatedStart order", () => {
     const source = "export const add = 1; export const subtract = 2;";
     const graph: ModuleGraph = new Map([
       [
@@ -228,5 +228,42 @@ describe("rewriteModule - source mappings", () => {
         result.mappings[i - 1].generatedStart,
       );
     }
+  });
+
+  it("does not add a mapping for an export removed by tree shaking", () => {
+    const source = "const x = 1;\nexport { x };";
+    const start = source.indexOf("export");
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/a.ts",
+        {
+          parsedModule: {
+            path: "/fake/a.ts",
+            source,
+            imports: [],
+            exports: [
+              {
+                exported: "x",
+                local: "x",
+                start: start,
+                end: source.length,
+              },
+            ],
+            dynamicImports: [],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map(),
+        },
+      ],
+    ]);
+    const result = rewriteModule(graph, "/fake/a.ts", new Map());
+
+    expect(result.code).toBe("const x = 1;\n");
+    expect(result.mappings).toEqual([
+      {
+        generatedStart: 0,
+        originalStart: 0,
+      },
+    ]);
   });
 });

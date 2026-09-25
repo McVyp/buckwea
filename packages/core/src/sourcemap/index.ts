@@ -130,7 +130,7 @@ export function buildSourceMap(builder: SourceMapBuilder): SourceMapV3 {
 
   return {
     version: 3,
-    sources: builder.sources,
+    sources: [...builder.sources],
     names: [],
     mappings: encode(segments as unknown as Parameters<typeof encode>[0]),
   };
@@ -141,7 +141,7 @@ export function shiftSourceMapBuilder(
   lineOffset: number,
 ): SourceMapBuilder {
   return {
-    sources: builder.sources,
+    sources: [...builder.sources],
     segments: builder.segments.map((seg) => ({
       ...seg,
       generatedLine: seg.generatedLine + lineOffset,

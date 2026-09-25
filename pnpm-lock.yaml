@@ -155,15 +155,6 @@ importers:
       acorn-walk:
         specifier: ^8.3.5
         version: 8.3.5
-      es-module-lexer:
-        specifier: ^2.3.2
-        version: 2.3.2
-      magic-string:
-        specifier: ^1.2.3
-        version: 1.2.3
-      source-map:
-        specifier: ^0.8.0
-        version: 0.8.0
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -956,10 +947,6 @@ packages:
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
-
-  source-map@0.8.0:
-    resolution: {integrity: sha512-d8EqvL+k/SOXCreS/SUzg2ciyHqBBLcN/yuRjFsbvVhHTE2pgei7oAhmPM7kWFbkX6OSMQfUq4KbkF3au9lhYQ==}
-    engines: {node: '>= 12'}
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
@@ -1772,8 +1759,6 @@ snapshots:
   siginfo@2.0.0: {}
 
   source-map-js@1.2.1: {}
-
-  source-map@0.8.0: {}
 
   stackback@0.0.2: {}
 
