@@ -10,6 +10,7 @@ import {
   SourceMapBuilder,
   createSourceMapBuilder,
 } from "../sourcemap/index.js";
+import { minify, translateOffset } from "../minify/index.js";
 
 interface ModuleEntriesResult {
   code: string;
@@ -34,6 +35,10 @@ export interface BundleFile {
 export interface BundleOutput {
   entry: BundleFile;
   chunks: Map<string, BundleFile>;
+}
+
+export interface BundleOptions {
+  minify?: boolean;
 }
 
 export function rewriteModule(
@@ -161,10 +166,34 @@ export function rewriteModule(
   return { code, mappings };
 }
 
+export function minifyRewritten(result: RewriteResult): RewriteResult {
+  const { code, offsets } = minify(result.code);
+  const mappings: Mapping[] = [];
+
+  for (const m of result.mappings) {
+    const generatedStart = translateOffset(
+      offsets,
+      m.generatedStart,
+      code.length,
+    );
+
+    if (generatedStart >= code.length) continue;
+
+    const last = mappings[mappings.length - 1];
+    if (last && last.generatedStart === generatedStart) {
+      last.originalStart = m.originalStart;
+    } else {
+      mappings.push({ generatedStart, originalStart: m.originalStart });
+    }
+  }
+  return { code, mappings };
+}
+
 function buildModuleEntries(
   graph: ModuleGraph,
   members: Set<string>,
   usedExports: Map<string, Set<string>>,
+  options: BundleOptions,
 ): ModuleEntriesResult {
   const moduleEntries: string[] = [];
   const mapBuilder = createSourceMapBuilder();
@@ -175,11 +204,11 @@ function buildModuleEntries(
     if (!node) {
       throw new Error(`Module "${filePath}" not found in module graph.`);
     }
-    const { code: rewritten, mappings } = rewriteModule(
-      graph,
-      filePath,
-      usedExports,
-    );
+    let result = rewriteModule(graph, filePath, usedExports);
+    if(options.minify) {
+      result = minifyRewritten(result);
+    }
+    const { code: rewritten, mappings } = result;
 
     const wrapperPrefix = `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n`;
     const moduleCodeStartLine = currentLine + 1;
@@ -201,7 +230,11 @@ function buildModuleEntries(
   return { code: moduleEntries.join("\n"), mapBuilder };
 }
 
-export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
+export function bundle(
+  graph: ModuleGraph,
+  entryPath: string,
+  options: BundleOptions = {},
+): BundleOutput {
   const entryNode = graph.get(entryPath);
   if (!entryNode) {
     throw new Error(`Entry path "${entryPath}" not found in module graph.`);
@@ -238,7 +271,7 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
 
   const entryMembers = chunkMembers.get(entryPath)!;
   const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
-    buildModuleEntries(graph, entryMembers, usedExports);
+    buildModuleEntries(graph, entryMembers, usedExports, options);
 
   const entryOutput = `
   var __modules__ = {};
@@ -279,6 +312,7 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
       graph,
       members,
       usedExports,
+      options,
     );
     const map = buildSourceMap(mapBuilder);
     chunkOutputs.set(chunkId, { code, map });
