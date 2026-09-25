@@ -4,6 +4,7 @@ import {
   buildSourceMap,
   computeSegments,
   createSourceMapBuilder,
+  shiftSourceMapBuilder,
 } from "./index.js";
 
 describe("createSourceMapBuilder", () => {
@@ -41,7 +42,8 @@ describe("addModuleMappings", () => {
   it("converts multiple mappings across two generated lines correctly", () => {
     const builder = createSourceMapBuilder();
     const originalSource = "export const add = 1;\nexport const subtract = 2;";
-    const generatedCode = "const add = 1; module.exports.add = add;\nconst subtract = 2;";
+    const generatedCode =
+      "const add = 1; module.exports.add = add;\nconst subtract = 2;";
 
     addModuleMappings(
       builder,
@@ -56,30 +58,28 @@ describe("addModuleMappings", () => {
       0,
     );
     expect(builder.segments).toEqual([
-      
-        {
-          generatedLine: 0,
-          generatedColumn: 0,
-          sourceIndex: 0,
-          originalLine: 0,
-          originalColumn: 0,
-        },
-        {
-          generatedLine: 0,
-          generatedColumn: 40,
-          sourceIndex: 0,
-          originalLine: 0,
-          originalColumn: 21,
-        },
-        {
-          generatedLine: 1,
-          generatedColumn: 0,
-          sourceIndex: 0,
-          originalLine: 1,
-          originalColumn: 0,
-        },
-      ],
-    );
+      {
+        generatedLine: 0,
+        generatedColumn: 0,
+        sourceIndex: 0,
+        originalLine: 0,
+        originalColumn: 0,
+      },
+      {
+        generatedLine: 0,
+        generatedColumn: 40,
+        sourceIndex: 0,
+        originalLine: 0,
+        originalColumn: 21,
+      },
+      {
+        generatedLine: 1,
+        generatedColumn: 0,
+        sourceIndex: 0,
+        originalLine: 1,
+        originalColumn: 0,
+      },
+    ]);
   });
 
   it("shifts the generated line by startingGeneratedLine for a later module", () => {
@@ -217,5 +217,60 @@ describe("buildSourceMap", () => {
     const map = buildSourceMap(builder);
     expect(map.version).toBe(3);
     expect(map.sources).toEqual([]);
+  });
+});
+
+describe("shiftSourceMapBuilder", () => {
+  it("shifts every segment's generatedLine by the given amount", () => {
+    const builder = createSourceMapBuilder();
+
+    addModuleMappings(
+      builder,
+      "/fake/a.ts",
+      "const a = 1;",
+      "const a = 1;",
+      [{ generatedStart: 0, originalStart: 0 }],
+      0,
+    );
+
+    const shifted = shiftSourceMapBuilder(builder, 5);
+    expect(shifted.segments).toEqual([
+      {
+        generatedLine: 5,
+        generatedColumn: 0,
+        sourceIndex: 0,
+        originalLine: 0,
+        originalColumn: 0,
+      },
+    ]);
+  });
+  
+  it("does not mutate the original builder", () => {
+    const builder = createSourceMapBuilder();
+    addModuleMappings(
+      builder,
+      "/fake/a.ts",
+      "const a = 1;",
+      "const a = 1;",
+      [{ generatedStart: 0, originalStart: 0 }],
+      0,
+    );
+    
+    shiftSourceMapBuilder(builder, 5);
+    expect(builder.segments[0].generatedLine).toBe(0);
+  });
+
+  it("keeps the same sources array reference", () => {
+    const builder = createSourceMapBuilder();
+    addModuleMappings(
+      builder,
+      "/fake/a.ts",
+      "const a = 1;",
+      "const a = 1;",
+      [{ generatedStart: 0, originalStart: 0 }],
+      0,
+    );
+    const shifted = shiftSourceMapBuilder(builder, 5);
+    expect(shifted.sources).toEqual(["/fake/a.ts"]);
   });
 });
