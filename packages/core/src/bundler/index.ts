@@ -1,6 +1,20 @@
 import { assignChunks } from "../chunking/index.js";
 import { ModuleGraph } from "../module-graph/index.js";
 import { findUsedExports, UsedExports } from "../tree-shaking/index.js";
+import {
+  addModuleMappings,
+  buildSourceMap,
+  offsetToLineColumn,
+  shiftSourceMapBuilder,
+  SourceMapV3,
+  SourceMapBuilder,
+  createSourceMapBuilder,
+} from "../sourcemap/index.js";
+
+interface ModuleEntriesResult {
+  code: string;
+  mapBuilder: SourceMapBuilder;
+}
 
 export interface Mapping {
   generatedStart: number;
@@ -10,6 +24,16 @@ export interface Mapping {
 export interface RewriteResult {
   code: string;
   mappings: Mapping[];
+}
+
+export interface BundleFile {
+  code: string;
+  map: SourceMapV3;
+}
+
+export interface BundleOutput {
+  entry: BundleFile;
+  chunks: Map<string, BundleFile>;
 }
 
 export function rewriteModule(
@@ -139,20 +163,40 @@ function buildModuleEntries(
   graph: ModuleGraph,
   members: Set<string>,
   usedExports: Map<string, Set<string>>,
-): string {
+): ModuleEntriesResult {
   const moduleEntries: string[] = [];
-  for (const filePath of members) {
-    const { code: rewritten } = rewriteModule(graph, filePath, usedExports);
-    moduleEntries.push(
-      `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n${rewritten}\n};`,
-    );
-  }
-  return moduleEntries.join("\n");
-}
+  const mapBuilder = createSourceMapBuilder();
+  let currentLine = 0;
 
-export interface BundleOutput {
-  entry: string;
-  chunks: Map<string, string>;
+  for (const filePath of members) {
+    const node = graph.get(filePath);
+    if (!node) {
+      throw new Error(`Module "${filePath}" not found in module graph.`);
+    }
+    const { code: rewritten, mappings } = rewriteModule(
+      graph,
+      filePath,
+      usedExports,
+    );
+
+    const wrapperPrefix = `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n`;
+    const moduleCodeStartLine = currentLine + 1;
+
+    addModuleMappings(
+      mapBuilder,
+      filePath,
+      node.parsedModule.source,
+      rewritten,
+      mappings,
+      moduleCodeStartLine,
+    );
+    const entryText = `${wrapperPrefix}${rewritten}\n};`;
+    moduleEntries.push(entryText);
+
+    const newLineCount = (entryText.match(/\n/g) || []).length;
+    currentLine += newLineCount + 1;
+  }
+  return { code: moduleEntries.join("\n"), mapBuilder };
 }
 
 export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
@@ -191,11 +235,8 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
   }
 
   const entryMembers = chunkMembers.get(entryPath)!;
-  const entryModuleEntries = buildModuleEntries(
-    graph,
-    entryMembers,
-    usedExports,
-  );
+  const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
+    buildModuleEntries(graph, entryMembers, usedExports);
 
   const entryOutput = `
   var __modules__ = {};
@@ -212,10 +253,33 @@ export function bundle(graph: ModuleGraph, entryPath: string): BundleOutput {
   return __require__(${JSON.stringify(entryPath)});
   `.trim();
 
-  const chunkOutputs = new Map<string, string>();
+  const moduleEntriesOffset = entryOutput.indexOf(entryModuleEntries);
+  if (moduleEntriesOffset === -1) {
+    throw new Error("Failed to locate module entries in the entry output.");
+  }
+
+  const { line: moduleEntriesLine } = offsetToLineColumn(
+    entryOutput,
+    moduleEntriesOffset,
+  );
+
+  const shiftedEntryBuilder = shiftSourceMapBuilder(
+    entryModuleBuilder,
+    moduleEntriesLine - 1,
+  );
+
+  const entryMap = buildSourceMap(shiftedEntryBuilder);
+
+  const chunkOutputs = new Map<string, BundleFile>();
   for (const [chunkId, members] of chunkMembers) {
     if (chunkId === entryPath) continue;
-    chunkOutputs.set(chunkId, buildModuleEntries(graph, members, usedExports));
+    const { code, mapBuilder } = buildModuleEntries(
+      graph,
+      members,
+      usedExports,
+    );
+    const map = buildSourceMap(mapBuilder);
+    chunkOutputs.set(chunkId, { code, map });
   }
-  return { entry: entryOutput, chunks: chunkOutputs };
+  return { entry: { code: entryOutput, map: entryMap }, chunks: chunkOutputs };
 }

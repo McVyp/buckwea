@@ -22,8 +22,8 @@ describe("bundle - trivial case", () => {
     ]);
 
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result.entry).toContain("const x = 1;");
-    expect(result.entry).toContain('__require__("/fake/entry.ts")');
+    expect(result.entry.code).toContain("const x = 1;");
+    expect(result.entry.code).toContain('__require__("/fake/entry.ts")');
   });
 
   it("throws if the entry path isn't in the graph", () => {
@@ -74,8 +74,8 @@ describe("bundle - with dependencies", () => {
     ]);
 
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result.entry).toContain('require("/fake/math.ts").add');
-    expect(result.entry).toContain("module.exports.add = add");
+    expect(result.entry.code).toContain('require("/fake/math.ts").add');
+    expect(result.entry.code).toContain("module.exports.add = add");
   });
 
   it("wires a file tha timports from two different dependencies", () => {
@@ -146,8 +146,8 @@ describe("bundle - with dependencies", () => {
       ],
     ]);
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result.entry).toContain('require("/fake/math.ts").add');
-    expect(result.entry).toContain('require("/fake/greet.ts").hello');
+    expect(result.entry.code).toContain('require("/fake/math.ts").add');
+    expect(result.entry.code).toContain('require("/fake/greet.ts").hello');
   });
 
   it("wires a multi-level dependency chain (A imports B, B imports C)", () => {
@@ -217,10 +217,10 @@ describe("bundle - with dependencies", () => {
     ]);
 
     const result = bundle(graph, "/fake/a.ts");
-    expect(result.entry).toContain('require("/fake/b.ts").doubled');
-    expect(result.entry).toContain('require("/fake/c.ts").value');
-    expect(result.entry).toContain("module.exports.value = value");
-    expect(result.entry).toContain("module.exports.doubled = doubled");
+    expect(result.entry.code).toContain('require("/fake/b.ts").doubled');
+    expect(result.entry.code).toContain('require("/fake/c.ts").value');
+    expect(result.entry.code).toContain("module.exports.value = value");
+    expect(result.entry.code).toContain("module.exports.doubled = doubled");
   });
 
   it("handles a re-export (export { add } from another file", () => {
@@ -263,7 +263,7 @@ describe("bundle - with dependencies", () => {
       ],
     ]);
     const result = bundle(graph, "/fake/barrel.ts");
-    expect(result.entry).toContain('require("/fake/math.ts").add');
+    expect(result.entry.code).toContain('require("/fake/math.ts").add');
   });
 
   it("drops an unused export's assignment while keeping its declaration", () => {
@@ -309,9 +309,9 @@ describe("bundle - with dependencies", () => {
       ],
     ]);
     const result = bundle(graph, "/fake/entry.ts");
-    expect(result.entry).toContain("module.exports.add = add");
-    expect(result.entry).not.toContain("module.exports.subtract = subtract");
-    expect(result.entry).toContain("const subtract = 2");
+    expect(result.entry.code).toContain("module.exports.add = add");
+    expect(result.entry.code).not.toContain("module.exports.subtract = subtract");
+    expect(result.entry.code).toContain("const subtract = 2");
   });
 });
 
@@ -361,14 +361,14 @@ describe("bundle - trivial chunking case", () => {
     expect(result.chunks.has("/fake/lazy.ts")).toBe(true);
 
     // entry's dynamci import call site was rewritten to reference the correct chunk id and correct target path
-    expect(result.entry).toContain('__loadChunk__("/fake/lazy.ts")');
-    expect(result.entry).toContain('__require__("/fake/lazy.ts")');
+    expect(result.entry.code).toContain('__loadChunk__("/fake/lazy.ts")');
+    expect(result.entry.code).toContain('__require__("/fake/lazy.ts")');
 
     // the entry chunk itself should not contain the code of the lazy chunk
-    expect(result.entry).not.toContain("module.exports.value");
+    expect(result.entry.code).not.toContain("module.exports.value");
 
     // lazy chunk should contain its own code
-    const lazyChunk = result.chunks.get("/fake/lazy.ts");
+    const lazyChunk = result.chunks.get("/fake/lazy.ts")?.code;
     expect(lazyChunk).toContain("module.exports.value = value");
     expect(lazyChunk).toContain('__modules__["/fake/lazy.ts"]');
   });
@@ -474,12 +474,12 @@ describe("bundle - shared dependency case", () => {
     expect(result.chunks.has("/fake/shared.ts")).toBe(true);
 
     // the shared module
-    const sharedChunk = result.chunks.get("/fake/shared.ts");
+    const sharedChunk = result.chunks.get("/fake/shared.ts")?.code;
     expect(sharedChunk).toContain("module.exports.util = util");
 
 
-    const lazyAChunk = result.chunks.get("/fake/lazyA.ts");
-    const lazyBChunk = result.chunks.get("/fake/lazyB.ts");
+    const lazyAChunk = result.chunks.get("/fake/lazyA.ts")?.code;
+    const lazyBChunk = result.chunks.get("/fake/lazyB.ts")?.code;
     expect(lazyAChunk).not.toContain("module.exports.util = util");
     expect(lazyBChunk).not.toContain("module.exports.util = util");
 
