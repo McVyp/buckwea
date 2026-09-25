@@ -84,7 +84,7 @@ export function rewriteModule(
         `Failed to resolve dynamic import "${dynImp.specifier}" in "${filePath}".`,
       );
     }
-    const replacements = `__loadChunk__(${JSON.stringify(resolved)}).then(function() { return __require__(${JSON.stringify(resolved)})});`;
+    const replacements = `__loadChunk__(${JSON.stringify(resolved)}).then(function() { return __require__(${JSON.stringify(resolved)})})`;
 
     edits.push({
       start: dynImp.start,

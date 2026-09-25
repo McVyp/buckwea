@@ -71,7 +71,7 @@ describe("rewriteModule - source mappings", () => {
     ]);
   });
 
-  it("reqrites a dynamic import clal site that spans the whole source", () => {
+  it("rewrites a dynamic import call site that spans the whole source", () => {
     const source = 'import("./lazy.js");';
     const graph: ModuleGraph = new Map([
       [
@@ -99,9 +99,40 @@ describe("rewriteModule - source mappings", () => {
     const result = rewriteModule(graph, "/fake/entry.ts", new Map());
 
     expect(result.code).toBe(
-      '__loadChunk__("/fake/lazy.ts").then(function() { return __require__("/fake/lazy.ts")});',
+      '__loadChunk__("/fake/lazy.ts").then(function() { return __require__("/fake/lazy.ts")})',
     );
     expect(result.mappings).toEqual([{ generatedStart: 0, originalStart: 0 }]);
+  });
+
+  it("rewrites a dynamic import that's chained with .then(), not standalone", () => {
+    const source = 'import("./lazy.js").then(m=>m.x)';
+    const graph: ModuleGraph = new Map([
+      [
+        "/fake/entry.ts",
+        {
+          parsedModule: {
+            path: "/fake/entry.ts",
+            source,
+            imports: [],
+            exports: [],
+            dynamicImports: [
+              {
+                specifier: "./lazy.js",
+                start: 0,
+                end: 19,
+              },
+            ],
+          },
+          dependencies: new Map(),
+          dynamicDependencies: new Map([["./lazy.js", "/fake/lazy.ts"]]),
+        },
+      ],
+    ]);
+
+    const result = rewriteModule(graph, "/fake/entry.ts", new Map());
+    expect(result.code).toBe(
+      '__loadChunk__("/fake/lazy.ts").then(function() { return __require__("/fake/lazy.ts")}).then(m=>m.x)',
+    );
   });
 
   it("maps two adjacent export edits plus the verbatim newline between them", () => {
