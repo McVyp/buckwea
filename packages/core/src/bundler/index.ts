@@ -205,12 +205,14 @@ function buildModuleEntries(
       throw new Error(`Module "${filePath}" not found in module graph.`);
     }
     let result = rewriteModule(graph, filePath, usedExports);
-    if(options.minify) {
+    if (options.minify) {
       result = minifyRewritten(result);
     }
     const { code: rewritten, mappings } = result;
 
-    const wrapperPrefix = `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n`;
+    const wrapperPrefix = options.minify
+      ? `__modules__[${JSON.stringify(filePath)}] = function(module,exports,require) {\n`
+      : `__modules__[${JSON.stringify(filePath)}] = function(module, exports, require) {\n`;
     const moduleCodeStartLine = currentLine + 1;
 
     addModuleMappings(
@@ -273,7 +275,13 @@ export function bundle(
   const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
     buildModuleEntries(graph, entryMembers, usedExports, options);
 
-  const entryOutput = `
+  const entryOutput = options.minify
+    ? [
+        "var __modules__={},__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}",
+        entryModuleEntries,
+        `return __require__(${JSON.stringify(entryPath)});`,
+      ].join("\n")
+    : `
   var __modules__ = {};
   var __cache__ = {};
 
