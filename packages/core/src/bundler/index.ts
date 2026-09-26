@@ -11,6 +11,7 @@ import {
   createSourceMapBuilder,
 } from "../sourcemap/index.js";
 import { minify, translateOffset } from "../minify/index.js";
+import { assignFileNames } from "./fileNames.js";
 
 interface ModuleEntriesResult {
   code: string;
@@ -28,6 +29,7 @@ export interface RewriteResult {
 }
 
 export interface BundleFile {
+  fileName: string;
   code: string;
   map: SourceMapV3;
 }
@@ -255,6 +257,7 @@ export function bundle(
   }
 
   const { chunks: chunkMembers, dynamicRoots } = assignChunks(graph, entryPath);
+  const fileNames = assignFileNames(entryPath, chunkMembers.keys());
 
   for (const chunkId of dynamicRoots) {
     if (chunkId === entryPath) continue;
@@ -323,7 +326,18 @@ export function bundle(
       options,
     );
     const map = buildSourceMap(mapBuilder);
-    chunkOutputs.set(chunkId, { code, map });
+    chunkOutputs.set(chunkId, {
+      fileName: fileNames.get(chunkId)!,
+      code,
+      map,
+    });
   }
-  return { entry: { code: entryOutput, map: entryMap }, chunks: chunkOutputs };
+  return {
+    entry: {
+      fileName: fileNames.get(entryPath)!,
+      code: entryOutput,
+      map: entryMap,
+    },
+    chunks: chunkOutputs,
+  };
 }
