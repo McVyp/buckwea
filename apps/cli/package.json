@@ -2,12 +2,11 @@
   "name": "@buckwea/cli",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "bin": {
     "buckwea": "./dist/index.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json"
   },
   "keywords": [],
   "author": "",

@@ -8,4 +8,4 @@ target/
 Cargo.lock
 *.log
 .env
-.env.localtsonfig,jsn now?
+.env.local
