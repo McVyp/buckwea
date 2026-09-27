@@ -272,6 +272,24 @@ function buildScriptEntry(
   ].join("\n");
 }
 
+function buildScriptChunk(
+  moduleEntries: string,
+  options: BundleOptions,
+): string {
+  if (options.minify) {
+    return [
+      "(function(__modules__,__require__,__loadChunk__){",
+      moduleEntries,
+      "})(globalThis.__buckwea__.modules,globalThis.__buckwea__.require,globalThis.__buckwea__.loadChunk);",
+    ].join("\n");
+  }
+  return [
+    "(function(__modules__,__require__,__loadChunk__){",
+    moduleEntries,
+    "})(globalThis.__buckwea__.modules,globalThis.__buckwea__.require,globalThis.__buckwea__.loadChunk);",
+  ].join("\n");
+}
+
 export function bundle(
   graph: ModuleGraph,
   entryPath: string,
@@ -360,13 +378,21 @@ export function bundle(
   const chunkOutputs = new Map<string, BundleFile>();
   for (const [chunkId, members] of chunkMembers) {
     if (chunkId === entryPath) continue;
-    const { code, mapBuilder } = buildModuleEntries(
+    const { code: moduleEntries, mapBuilder } = buildModuleEntries(
       graph,
       members,
       usedExports,
       options,
     );
-    const map = buildSourceMap(mapBuilder);
+    let code = moduleEntries;
+    let chunkBuilder = mapBuilder;
+    if (options.format === "script") {
+      code = buildScriptChunk(moduleEntries, options);
+      const offset = code.indexOf(moduleEntries);
+      const { line } = offsetToLineColumn(code, offset);
+      chunkBuilder = shiftSourceMapBuilder(mapBuilder, line - 1);
+    }
+    const map = buildSourceMap(chunkBuilder);
     chunkOutputs.set(chunkId, {
       fileName: fileNames.get(chunkId)!,
       code,
