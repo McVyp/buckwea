@@ -41,6 +41,12 @@ export interface BundleOutput {
 
 export interface BundleOptions {
   minify?: boolean;
+  /**
+   * The format of the output bundle. Can be either "function" or "script".
+   * * "function" (default): a function body ending in `return`, for new Function().
+   * "script": a standalone IIFE that registers itself on globalThis.__buckwea__.
+   **/
+  format?: "function" | "script";
 }
 
 export function rewriteModule(
@@ -234,6 +240,38 @@ function buildModuleEntries(
   return { code: moduleEntries.join("\n"), mapBuilder };
 }
 
+function buildScriptEntry(
+  moduleEntries: string,
+  entryPath: string,
+  options: BundleOptions,
+): string {
+  const entryId = JSON.stringify(entryPath);
+  if (options.minify) {
+    return [
+      "(function(){var __buckwea__=globalThis.__buckwea__||(globalThis.__buckwea__={});var __modules__=__buckwea__.modules||(__buckwea__.modules={}),__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}__buckwea__.require=__require__;",
+      moduleEntries,
+      `__require__(${entryId});})();`,
+    ].join("\n");
+  }
+  return [
+    "(function () {",
+    "var __buckwea__ = globalThis.__buckwea__ || (globalThis.__buckwea__ = {});",
+    "var __modules__ = __buckwea__.modules || (__buckwea__.modules = {});",
+    "var __cache__ = {};",
+    "function __require__(path) {",
+    "  if (__cache__[path]) return __cache__[path].exports;",
+    "  var module = { exports: {} };",
+    "  __cache__[path] = module;",
+    "  __modules__[path](module, module.exports, __require__);",
+    "  return module.exports;",
+    "}",
+    "__buckwea__.require = __require__;",
+    moduleEntries,
+    `__require__(${entryId});`,
+    "})();",
+  ].join("\n");
+}
+
 export function bundle(
   graph: ModuleGraph,
   entryPath: string,
@@ -278,13 +316,16 @@ export function bundle(
   const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
     buildModuleEntries(graph, entryMembers, usedExports, options);
 
-  const entryOutput = options.minify
-    ? [
-        "var __modules__={},__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}",
-        entryModuleEntries,
-        `return __require__(${JSON.stringify(entryPath)});`,
-      ].join("\n")
-    : `
+  const entryOutput =
+    options.format === "script"
+      ? buildScriptEntry(entryModuleEntries, entryPath, options)
+      : options.minify
+        ? [
+            "var __modules__={},__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}",
+            entryModuleEntries,
+            `return __require__(${JSON.stringify(entryPath)});`,
+          ].join("\n")
+        : `
   var __modules__ = {};
   var __cache__ = {};
 
