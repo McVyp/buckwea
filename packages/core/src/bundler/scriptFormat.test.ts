@@ -133,4 +133,17 @@ describe("bundle - script format", () => {
     expect(decoded[codeLine]?.length ?? 0).toBeGreaterThan(0);
     expect(decoded[codeLine - 1]?.length ?? 0).toBe(0);
   });
+
+  for (const minify of [true, false]) {
+    it(`script-format entyry includes the chunk table and a loadChunk function (minify: ${minify})`, () => {
+      const { entry } = bundle(entryWithLazyChunkGraph(), "/fake/entry.ts", {
+        format: "script",
+        minify,
+      });
+      expect(entry.code).toContain('{"/fake/lazy.ts":"lazy.js"}');
+      const context = vm.createContext({});
+      new vm.Script(entry.code).runInContext(context);
+      expect(typeof context.__buckwea__.loadChunk).toBe("function");
+    });
+  }
 });

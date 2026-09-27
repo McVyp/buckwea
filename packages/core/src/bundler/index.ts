@@ -243,12 +243,17 @@ function buildModuleEntries(
 function buildScriptEntry(
   moduleEntries: string,
   entryPath: string,
+  chunkFiles: Record<string, string>,
   options: BundleOptions,
 ): string {
   const entryId = JSON.stringify(entryPath);
+  const chunkTable = JSON.stringify(chunkFiles);
   if (options.minify) {
     return [
       "(function(){var __buckwea__=globalThis.__buckwea__||(globalThis.__buckwea__={});var __modules__=__buckwea__.modules||(__buckwea__.modules={}),__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}__buckwea__.require=__require__;",
+      "var __chunks__=" +
+        chunkTable +
+        ';function __loadChunk__(id){return import("./" + __chunks__[id]);}__buckwea__.loadChunk=__loadChunk__;',
       moduleEntries,
       `__require__(${entryId});})();`,
     ].join("\n");
@@ -266,6 +271,11 @@ function buildScriptEntry(
     "  return module.exports;",
     "}",
     "__buckwea__.require = __require__;",
+    `var __chunks__ = ${chunkTable};`,
+    "function __loadChunk__(id) {",
+    ' return import("./" + __chunks__[id]);',
+    "}",
+    "__buckwea__.loadChunk = __loadChunk__;",
     moduleEntries,
     `__require__(${entryId});`,
     "})();",
@@ -334,9 +344,14 @@ export function bundle(
   const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
     buildModuleEntries(graph, entryMembers, usedExports, options);
 
+  const chunkFiles: Record<string, string> = {};
+  for (const [id, name] of fileNames) {
+    if (id !== entryPath) chunkFiles[id] = name;
+  }
+
   const entryOutput =
     options.format === "script"
-      ? buildScriptEntry(entryModuleEntries, entryPath, options)
+      ? buildScriptEntry(entryModuleEntries, entryPath, chunkFiles, options)
       : options.minify
         ? [
             "var __modules__={},__cache__={};function __require__(p){if(__cache__[p])return __cache__[p].exports;var m={exports:{}};__cache__[p]=m;__modules__[p](m,m.exports,__require__);return m.exports;}",
