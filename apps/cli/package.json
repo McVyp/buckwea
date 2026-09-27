@@ -6,7 +6,7 @@
     "buckwea": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.build.json"
   },
   "keywords": [],
   "author": "",
