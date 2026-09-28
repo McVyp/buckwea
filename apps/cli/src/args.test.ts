@@ -36,6 +36,7 @@ describe("parseArgs", () => {
       command: "analyze",
       entry: "src/index.ts",
       minify: false,
+      json: false,
     });
   });
 
@@ -44,6 +45,16 @@ describe("parseArgs", () => {
       command: "analyze",
       entry: "src/index.ts",
       minify: true,
+      json: false,
+    });
+  });
+
+  it("parses analyze --json", () => {
+    expect(parseArgs(["analyze", "src/index.ts", "--json"])).toEqual({
+      command: "analyze",
+      entry: "src/index.ts",
+      minify: false,
+      json: true,
     });
   });
 

@@ -90,3 +90,9 @@ export function formatStatsTable(stats: BundleStats): string {
   );
   return lines.join("\n");
 }
+
+export const STATS_JSON_VERSION = 1;
+
+export function formatStatsJson(stats: BundleStats): string {
+  return JSON.stringify({ version: STATS_JSON_VERSION, ...stats }, null, 2);
+}

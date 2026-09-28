@@ -1,6 +1,6 @@
 import type { BundleStats } from "@buckwea/core";
 import { describe, expect, it } from "vitest";
-import { formatStatsTable } from "./report.js";
+import { formatStatsJson, formatStatsTable } from "./report.js";
 
 const stats: BundleStats = {
   minified: false,
@@ -79,13 +79,24 @@ describe("formatStatsTable", () => {
 
   it("lists modules largest first", () => {
     const out = formatStatsTable(stats);
-    expect(out.indexOf("src/math.ts")).toBeLessThan(out.indexOf("src/heavy.ts"));
-    expect(out.indexOf("src/heavy.ts")).toBeLessThan(out.indexOf("src/index.ts"));
-  })
+    expect(out.indexOf("src/math.ts")).toBeLessThan(
+      out.indexOf("src/heavy.ts"),
+    );
+    expect(out.indexOf("src/heavy.ts")).toBeLessThan(
+      out.indexOf("src/index.ts"),
+    );
+  });
 
   it("shwos unused exports, or - when there are none", () => {
     const lines = formatStatsTable(stats).split("\n");
     expect(lines.find((l) => l.includes("src/math.ts"))).toMatch(/subtract$/);
     expect(lines.find((l) => l.includes("src/heavy.ts"))).toMatch(/\s-$/);
-  })
+  });
+});
+
+describe("formatStatsJson", () => {
+  it("round-trips the stats with a version number", () => {
+    const parsed = JSON.parse(formatStatsJson(stats));
+    expect(parsed).toEqual({ version: 1, ...stats });
+  });
 });

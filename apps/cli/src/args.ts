@@ -2,7 +2,7 @@ import { parseArgs as parseNodeArgs } from "node:util";
 
 export type CliCommand =
   | { command: "build"; entry: string; outdir: string; minify: boolean }
-  | { command: "analyze"; entry: string; minify: boolean }
+  | { command: "analyze"; entry: string; minify: boolean; json: boolean }
   | { command: "graph"; entry: string }
   | { command: "help" };
 
@@ -15,7 +15,7 @@ export class UsageError extends Error {
 
 export const USAGE = `Usage:
 buckwea build <entry> [--outdir <dir>] [--minify]
-buckwea analyze <entry> [--minify]
+buckwea analyze <entry> [--minify] [--json]
 buckwea graph <entry>
 buckwea --help`;
 
@@ -26,6 +26,7 @@ function runNodeParse(argv: string[]) {
     options: {
       outdir: { type: "string" },
       minify: { type: "boolean" },
+      json: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -61,7 +62,12 @@ export function parseArgs(argv: string[]): CliCommand {
   }
 
   if (command === "analyze") {
-    return { command: "analyze", entry, minify: values.minify ?? false };
+    return {
+      command: "analyze",
+      entry,
+      minify: values.minify ?? false,
+      json: values.json ?? false,
+    };
   }
 
   return {
