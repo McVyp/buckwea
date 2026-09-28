@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ModuleGraph } from "../module-graph";
-import { bundle } from ".";
+import { ModuleGraph } from "../module-graph/index.js";
+import { bundle } from "./index.js";
 import { decode } from "@jridgewell/sourcemap-codec";
 
 const source = "// header comment\nconst a = 1;\n\n   export const b = a + 1;";

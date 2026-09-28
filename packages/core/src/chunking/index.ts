@@ -1,4 +1,4 @@
-import { ModuleGraph } from "../module-graph";
+import { ModuleGraph } from "../module-graph/index.js";
 
 export interface ChunkAssignment {
   chunks: Map<string, Set<string>>;

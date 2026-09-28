@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minify, translateOffset } from "./index";
+import { minify, translateOffset } from "./index.js";
 
 describe("minify", () => {
   it("removes indentation and extra spaces", () => {

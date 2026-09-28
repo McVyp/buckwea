@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { rewriteModule } from ".";
-import { ModuleGraph } from "../module-graph";
+import { rewriteModule } from "./index.js";
+import { ModuleGraph } from "../module-graph/index.js";
 
 describe("rewriteModule - source mappings", () => {
   it("returns one verbatim mapping for  amodule with no edits", () => {

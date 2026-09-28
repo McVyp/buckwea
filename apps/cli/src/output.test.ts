@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createOutputFiles } from "./output";
+import { createOutputFiles } from "./output.js";
 import { BundleFile, BundleOutput } from "@buckwea/core";
 import { join } from "node:path";
 

@@ -41,7 +41,8 @@ export interface DynamicImportBinding {
 // parses a module source code and returns a ParsedModule object containing information about imports,
 // exports, and dynamic imports. It never touches the file system.
 export function parseModule(path: string, source: string): ParsedModule {
-  const TSParser = Parser.extend(tsPlugin() as any);
+  // acorn-typescript's type declarations don't match how Node loads it under NodeNext at runtime the default import is the plugin function (the CLI's e2e tests prove it).
+  const TSParser = Parser.extend((tsPlugin as unknown as () => any)());
   const ast = TSParser.parse(source, {
     ecmaVersion: "latest",
     sourceType: "module",

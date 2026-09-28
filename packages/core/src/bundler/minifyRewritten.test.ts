@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { minifyRewritten } from ".";
+import { minifyRewritten } from "./index.js";
 
 describe("minifyRewritten", () => {
   it("minifies the code and moves mappings to the new positions", () => {
@@ -23,19 +23,19 @@ describe("minifyRewritten", () => {
   it("keeps the later mapping when a whitespace-only span collapses", () => {
     const code = "var a = 1;\nvar b = 2;";
     const result = minifyRewritten({
-        code,
-        mappings: [
-            { generatedStart: 0, originalStart: 0 },
-            { generatedStart: code.indexOf("\n"), originalStart: 20 },
-            { generatedStart: code.indexOf("var b"), originalStart: 30 },
-        ]
+      code,
+      mappings: [
+        { generatedStart: 0, originalStart: 0 },
+        { generatedStart: code.indexOf("\n"), originalStart: 20 },
+        { generatedStart: code.indexOf("var b"), originalStart: 30 },
+      ],
     });
 
     expect(result.mappings).toEqual([
-        { generatedStart: 0, originalStart: 0 },
-        { generatedStart: result.code.indexOf("var b"), originalStart: 30 },
-    ])
-  })
+      { generatedStart: 0, originalStart: 0 },
+      { generatedStart: result.code.indexOf("var b"), originalStart: 30 },
+    ]);
+  });
 
   it("drops a mapping that ends up past the end of the code", () => {
     const code = "var a = 1;\n";

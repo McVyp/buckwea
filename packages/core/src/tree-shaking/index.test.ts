@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ParsedModule } from "../parser";
-import { ModuleGraph } from "../module-graph";
-import { findMustKeepModules, findUsedExports } from ".";
+import { ParsedModule } from "../parser/index.js";
+import { ModuleGraph } from "../module-graph/index.js";
+import { findMustKeepModules, findUsedExports } from "./index.js";
 
 function makeModule(
   path: string,

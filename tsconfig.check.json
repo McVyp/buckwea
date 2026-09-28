@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "paths": {
+      "@buckwea/core": ["./packages/core/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src", "apps/*/src", "examples", "vitest.config.ts"]
+}

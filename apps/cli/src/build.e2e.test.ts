@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { buildToDisk } from "./build.js";
@@ -34,7 +34,7 @@ describe("buckwea build (end to end)", () => {
       buildToDisk(example("lazy"), outdir, minify);
       expect(readdirSync(outdir).sort()).toEqual([
         "heavy.js",
-        "heavy.js.map", 
+        "heavy.js.map",
         "index.js",
         "index.js.map",
       ]);
@@ -43,6 +43,14 @@ describe("buckwea build (end to end)", () => {
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
       expect(run.stdout).toBe("Hello, entry!\n42\n");
+
+      const entryCode = readFileSync(join(outdir, "index.js"), "utf-8");
+      expect(entryCode).toContain('"examples/lazy/heavy.ts"');
+      for (const name of readdirSync(outdir)) {
+        expect(readFileSync(join(outdir, name), "utf-8")).not.toContain(
+          repoRoot,
+        );
+      }
     });
 
     it(`builds examples/basic into a file that runs without errors (minify: ${minify})`, () => {

@@ -1,6 +1,11 @@
 import { resolve as resolvePath } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { buildModuleGraph, bundle } from "@buckwea/core";
+import {
+  buildModuleGraph,
+  bundle,
+  relativizeGraph,
+  toModuleId,
+} from "@buckwea/core";
 import { createOutputFiles, type OutputFile } from "./output.js";
 
 export interface BuildResult {
@@ -13,10 +18,14 @@ export function buildToDisk(
   entry: string,
   outdir: string,
   minify: boolean,
+  rootDir: string = process.cwd(),
 ): BuildResult {
   const entryPath = resolvePath(entry);
-  const graph = buildModuleGraph(entryPath);
-  const output = bundle(graph, entryPath, { format: "script", minify });
+  const graph = relativizeGraph(buildModuleGraph(entryPath), rootDir);
+  const output = bundle(graph, toModuleId(rootDir, entryPath), {
+    format: "script",
+    minify,
+  });
 
   const absOutdir = resolvePath(outdir);
   const files = createOutputFiles(output, absOutdir);
