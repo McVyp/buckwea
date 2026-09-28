@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { resolve as resolvePath } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { relative, resolve as resolvePath } from "node:path";
 import { buildModuleGraph, bundle } from "@buckwea/core";
 import { CliCommand, parseArgs, USAGE, UsageError } from "./args.js";
+import { createOutputFiles } from "./output.js";
 
 function run(cmd: CliCommand): void {
   if (cmd.command == "help") {
@@ -25,11 +27,18 @@ function run(cmd: CliCommand): void {
     minify: cmd.minify,
   });
 
-  const files = [output.entry, ...output.chunks.values()];
-  console.log(`Bundled ${graph.size} modules into ${files.length} file(s)`);
+  const outdir = resolvePath(cmd.outdir);
+  const files = createOutputFiles(output, outdir);
+
+  mkdirSync(outdir, { recursive: true });
   for (const file of files) {
+    writeFileSync(file.path, file.contents);
+  }
+  console.log(`Bundled ${graph.size} modules into ${outdir}:`);
+  for (const file of files) {
+    const shown = relative(process.cwd(), file.path);
     console.log(
-      ` ${cmd.outdir}/${file.fileName}  ${Buffer.byteLength(file.code)} bytes`,
+      ` ${shown.startsWith("..") ? file.path : shown} ${Buffer.byteLength(file.contents)} bytes`,
     );
   }
 }
