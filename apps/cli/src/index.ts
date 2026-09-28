@@ -2,7 +2,8 @@
 import { relative, resolve as resolvePath } from "node:path";
 import { buildModuleGraph } from "@buckwea/core";
 import { CliCommand, parseArgs, USAGE, UsageError } from "./args.js";
-import { buildToDisk } from "./build.js";
+import { analyzeEntry, buildToDisk } from "./build.js";
+import { formatStatsTable } from "./report.js";
 
 // node prints an ExperimentalWarning the first time stripTypeScriptTypes runs, Hide just that warning; every other warning still gets through.
 
@@ -25,6 +26,11 @@ function run(cmd: CliCommand): void {
     for (const filePath of graph.keys()) {
       console.log(` ${filePath}`);
     }
+    return;
+  }
+
+  if (cmd.command === "analyze") {
+    console.log(formatStatsTable(analyzeEntry(cmd.entry, cmd.minify)));
     return;
   }
 

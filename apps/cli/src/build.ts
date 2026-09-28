@@ -5,6 +5,8 @@ import {
   bundle,
   relativizeGraph,
   toModuleId,
+  type BundleOptions,
+  type BundleStats,
 } from "@buckwea/core";
 import { createOutputFiles, type OutputFile } from "./output.js";
 
@@ -14,19 +16,23 @@ export interface BuildResult {
   files: OutputFile[];
 }
 
+function bundleEntry(entry: string, options: BundleOptions, rootDir: string) {
+  const entryPath = resolvePath(entry);
+  const graph = relativizeGraph(buildModuleGraph(entryPath), rootDir);
+  const output = bundle(graph, toModuleId(rootDir, entryPath), {
+    format: "script",
+    ...options,
+  });
+  return { graph, output };
+}
+
 export function buildToDisk(
   entry: string,
   outdir: string,
   minify: boolean,
   rootDir: string = process.cwd(),
 ): BuildResult {
-  const entryPath = resolvePath(entry);
-  const graph = relativizeGraph(buildModuleGraph(entryPath), rootDir);
-  const output = bundle(graph, toModuleId(rootDir, entryPath), {
-    format: "script",
-    minify,
-  });
-
+  const { graph, output } = bundleEntry(entry, { minify }, rootDir);
   const absOutdir = resolvePath(outdir);
   const files = createOutputFiles(output, absOutdir);
   mkdirSync(absOutdir, { recursive: true });
@@ -38,4 +44,16 @@ export function buildToDisk(
     outdir: absOutdir,
     files,
   };
+}
+
+export function analyzeEntry(
+  entry: string,
+  minify: boolean,
+  rootDir: string = process.cwd(),
+): BundleStats {
+  const { output } = bundleEntry(entry, { minify, stats: true }, rootDir);
+  if (!output.stats) {
+    throw new Error("bundle() returned no stats");
+  }
+  return output.stats;
 }

@@ -31,6 +31,22 @@ describe("parseArgs", () => {
     });
   });
 
+  it("parses an analyze command with default options", () => {
+    expect(parseArgs(["analyze", "src/index.ts"])).toEqual({
+      command: "analyze",
+      entry: "src/index.ts",
+      minify: false,
+    });
+  });
+
+  it("parses analyze --minify", () => {
+    expect(parseArgs(["analyze", "src/index.ts", "--minify"])).toEqual({
+      command: "analyze",
+      entry: "src/index.ts",
+      minify: true,
+    });
+  });
+
   it("parses a graph command", () => {
     expect(parseArgs(["graph", "src/index.ts"])).toEqual({
       command: "graph",

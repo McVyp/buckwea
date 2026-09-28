@@ -2,6 +2,7 @@ import { parseArgs as parseNodeArgs } from "node:util";
 
 export type CliCommand =
   | { command: "build"; entry: string; outdir: string; minify: boolean }
+  | { command: "analyze"; entry: string; minify: boolean }
   | { command: "graph"; entry: string }
   | { command: "help" };
 
@@ -14,6 +15,7 @@ export class UsageError extends Error {
 
 export const USAGE = `Usage:
 buckwea build <entry> [--outdir <dir>] [--minify]
+buckwea analyze <entry> [--minify]
 buckwea graph <entry>
 buckwea --help`;
 
@@ -43,7 +45,7 @@ export function parseArgs(argv: string[]): CliCommand {
   }
 
   const [command, entry, ...extra] = positionals;
-  if (command !== "build" && command !== "graph") {
+  if (command !== "build" && command !== "graph" && command !== "analyze") {
     throw new UsageError(`Unknown command: ${command}`);
   }
 
@@ -56,6 +58,10 @@ export function parseArgs(argv: string[]): CliCommand {
 
   if (command === "graph") {
     return { command: "graph", entry };
+  }
+
+  if (command === "analyze") {
+    return { command: "analyze", entry, minify: values.minify ?? false };
   }
 
   return {
