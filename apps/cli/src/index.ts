@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
 import { relative, resolve as resolvePath } from "node:path";
-import { buildModuleGraph, bundle } from "@buckwea/core";
+import { buildModuleGraph } from "@buckwea/core";
 import { CliCommand, parseArgs, USAGE, UsageError } from "./args.js";
-import { createOutputFiles } from "./output.js";
+import { buildToDisk } from "./build.js";
 
 function run(cmd: CliCommand): void {
   if (cmd.command == "help") {
@@ -11,10 +10,8 @@ function run(cmd: CliCommand): void {
     return;
   }
 
-  const entryPath = resolvePath(cmd.entry);
-  const graph = buildModuleGraph(entryPath);
-
   if (cmd.command == "graph") {
+    const graph = buildModuleGraph(resolvePath(cmd.entry));
     console.log(`Resolved ${graph.size} modules`);
     for (const filePath of graph.keys()) {
       console.log(` ${filePath}`);
@@ -22,26 +19,14 @@ function run(cmd: CliCommand): void {
     return;
   }
 
-  const output = bundle(graph, entryPath, {
-    format: "script",
-    minify: cmd.minify,
-  });
-
-  const outdir = resolvePath(cmd.outdir);
-  const files = createOutputFiles(output, outdir);
-
-  mkdirSync(outdir, { recursive: true });
-  for (const file of files) {
-    writeFileSync(file.path, file.contents);
-  }
-  console.log(`Bundled ${graph.size} modules into ${outdir}:`);
-  for (const file of files) {
+  const result = buildToDisk(cmd.entry, cmd.outdir, cmd.minify);
+  console.log(`Bundled ${result.moduleCount} modules into ${result.outdir}:`);
+  for (const file of result.files) {
     const shown = relative(process.cwd(), file.path);
     console.log(
       ` ${shown.startsWith("..") ? file.path : shown} ${Buffer.byteLength(file.contents)} bytes`,
     );
-  }
-}
+  }}
 
 try {
   run(parseArgs(process.argv.slice(2)));
