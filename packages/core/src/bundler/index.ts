@@ -12,10 +12,23 @@ import {
 } from "../sourcemap/index.js";
 import { minify, translateOffset } from "../minify/index.js";
 import { assignFileNames } from "./fileNames.js";
+import {
+  computeStats,
+  type BundleStats,
+  type StatsFileInput,
+} from "./stats.js";
+
+export type { BundleStats, ModuleStats, FileStats } from "./stats.js";
+
+interface ModuleEntryText {
+  id: string;
+  text: string;
+}
 
 interface ModuleEntriesResult {
   code: string;
   mapBuilder: SourceMapBuilder;
+  modules: ModuleEntryText[];
 }
 
 export interface Mapping {
@@ -37,6 +50,7 @@ export interface BundleFile {
 export interface BundleOutput {
   entry: BundleFile;
   chunks: Map<string, BundleFile>;
+  stats?: BundleStats;
 }
 
 export interface BundleOptions {
@@ -47,6 +61,7 @@ export interface BundleOptions {
    * "script": a standalone IIFE that registers itself on globalThis.__buckwea__.
    **/
   format?: "function" | "script";
+  stats?: boolean;
 }
 
 export function rewriteModule(
@@ -204,6 +219,7 @@ function buildModuleEntries(
   options: BundleOptions,
 ): ModuleEntriesResult {
   const moduleEntries: string[] = [];
+  const modules: ModuleEntryText[] = [];
   const mapBuilder = createSourceMapBuilder();
   let currentLine = 0;
 
@@ -233,11 +249,12 @@ function buildModuleEntries(
     );
     const entryText = `${wrapperPrefix}${rewritten}\n};`;
     moduleEntries.push(entryText);
+    modules.push({ id: filePath, text: entryText });
 
     const newLineCount = (entryText.match(/\n/g) || []).length;
     currentLine += newLineCount + 1;
   }
-  return { code: moduleEntries.join("\n"), mapBuilder };
+  return { code: moduleEntries.join("\n"), mapBuilder, modules };
 }
 
 function buildScriptEntry(
@@ -341,8 +358,11 @@ export function bundle(
   }
 
   const entryMembers = chunkMembers.get(entryPath)!;
-  const { code: entryModuleEntries, mapBuilder: entryModuleBuilder } =
-    buildModuleEntries(graph, entryMembers, usedExports, options);
+  const {
+    code: entryModuleEntries,
+    mapBuilder: entryModuleBuilder,
+    modules: entryModules,
+  } = buildModuleEntries(graph, entryMembers, usedExports, options);
 
   const chunkFiles: Record<string, string> = {};
   for (const [id, name] of fileNames) {
@@ -391,14 +411,14 @@ export function bundle(
   const entryMap = buildSourceMap(shiftedEntryBuilder);
 
   const chunkOutputs = new Map<string, BundleFile>();
+  const chunkStatsInput: StatsFileInput[] = [];
   for (const [chunkId, members] of chunkMembers) {
     if (chunkId === entryPath) continue;
-    const { code: moduleEntries, mapBuilder } = buildModuleEntries(
-      graph,
-      members,
-      usedExports,
-      options,
-    );
+    const {
+      code: moduleEntries,
+      mapBuilder,
+      modules,
+    } = buildModuleEntries(graph, members, usedExports, options);
     let code = moduleEntries;
     let chunkBuilder = mapBuilder;
     if (options.format === "script") {
@@ -413,13 +433,37 @@ export function bundle(
       code,
       map,
     });
+    chunkStatsInput.push({
+      chunk: chunkId,
+      fileName: fileNames.get(chunkId)!,
+      isEntry: false,
+      code,
+      modules,
+    });
   }
-  return {
-    entry: {
-      fileName: fileNames.get(entryPath)!,
-      code: entryOutput,
-      map: entryMap,
-    },
-    chunks: chunkOutputs,
+
+  const entryFile: BundleFile = {
+    fileName: fileNames.get(entryPath)!,
+    code: entryOutput,
+    map: entryMap,
   };
+  const output: BundleOutput = { entry: entryFile, chunks: chunkOutputs };
+  if(options.stats) {
+    output.stats = computeStats(
+      graph,
+      usedExports,
+      [
+        {
+          chunk: entryPath,
+          fileName: entryFile.fileName,
+          isEntry: true,
+          code: entryFile.code,
+          modules: entryModules,
+        },
+        ...chunkStatsInput,
+      ],
+      options.minify === true,
+    );
+  }
+  return output;
 }
