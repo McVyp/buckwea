@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { buildToDisk } from "./build.js";
+import { analyzeEntry, buildToDisk } from "./build.js";
 
 const repoRoot = resolve(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -60,6 +60,36 @@ describe("buckwea build (end to end)", () => {
       const run = runNode(join(outdir, "index.js"));
       expect(run.stderr).toBe("");
       expect(run.status).toBe(0);
+    });
+  }
+});
+
+describe("buckwea analyze (end to end)", () => {
+  for (const minify of [false, true]) {
+    it(`reports the sizes build actually write (minify: ${minify})`, () => {
+      const outdir = freshDir();
+      buildToDisk(example("lazy"), outdir, minify, repoRoot);
+      const stats = analyzeEntry(example("lazy"), minify, repoRoot);
+      expect(stats.minified).toBe(minify);
+
+      expect(stats.files.map((f) => f.fileName).sort()).toEqual(
+        readdirSync(outdir)
+          .filter((name) => name.endsWith(".js"))
+          .sort(),
+      );
+
+      for (const file of stats.files) {
+        const onDisk = readFileSync(join(outdir, file.fileName), "utf-8");
+        const comment = `\n//# sourceMappingURL=${file.fileName}.map\n`;
+        expect(onDisk.endsWith(comment)).toBe(true);
+        const code = onDisk.slice(0, -comment.length);
+        expect(file.bytes).toBe(Buffer.byteLength(code, "utf-8"));
+      }
+
+      for (const m of stats.modules) {
+        const onDisk = readFileSync(join(outdir, m.fileName), "utf-8");
+        expect(onDisk).toContain(`__modules__[${JSON.stringify(m.id)}]`);
+      }
     });
   }
 });
