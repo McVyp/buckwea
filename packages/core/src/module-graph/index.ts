@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { ParsedModule, parseModule } from "../parser/index.js";
 import { resolve } from "../resolver/index.js";
+import { toJavaScriptSource } from "./stripTypes.js";
 
 export interface ModuleGraphNode {
   parsedModule: ParsedModule;
@@ -18,7 +19,10 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
     if (visited.has(filePath)) return;
     visited.add(filePath);
 
-    const source = readFileSync(filePath, "utf-8");
+    const source = toJavaScriptSource(
+      filePath,
+      readFileSync(filePath, "utf-8"),
+    );
     const parsedModule = parseModule(filePath, source);
 
     const dependencies = new Map<string, string>();
@@ -60,7 +64,7 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
     for (const resolvedPath of dependencies.values()) {
       visit(resolvedPath);
     }
-    
+
     for (const resolvedPath of dynamicDependencies.values()) {
       visit(resolvedPath);
     }

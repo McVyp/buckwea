@@ -15,8 +15,9 @@ describe("bundle - end to end with real files", () => {
     const result = bundle(graph, entryPath);
 
     expect(result.entry.code).toContain("__modules__");
-    expect(result.entry.code).toContain("function add(a: number, b: number): number");
-    expect(result.entry.code).toContain("function subtract(a: number, b: number): number");
+    expect(result.entry.code).toContain("function add(a");
+    expect(result.entry.code).toContain("function subtract(a");
+    expect(result.entry.code).not.toContain(": number");
     expect(result.entry.code).toContain("require(");
     expect(result.entry.code).not.toMatch(/^import /m);
     expect(result.entry.code).toContain("module.exports.add = add");
