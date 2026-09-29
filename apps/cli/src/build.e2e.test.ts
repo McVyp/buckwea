@@ -4,7 +4,8 @@ import { join, resolve } from "node:path";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { analyzeEntry, buildToDisk } from "./build.js";
+import { analyzeEntry, buildToDisk, writeHtmlReport } from "./build.js";
+import { STATS_JSON_VERSION } from "./report.js";
 
 const repoRoot = resolve(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -90,6 +91,35 @@ describe("buckwea analyze (end to end)", () => {
         const onDisk = readFileSync(join(outdir, m.fileName), "utf-8");
         expect(onDisk).toContain(`__modules__[${JSON.stringify(m.id)}]`);
       }
+    });
+  }
+});
+
+describe("buckwea analyze --html (end to end)", () => {
+  for (const minify of [false, true]) {
+    it(`writes only a report whose data matches analyze (minify: ${minify})`, () => {
+      const dir = freshDir();
+      const file = join(dir, "nested", "report.html");
+      const result = writeHtmlReport(example("lazy"), minify, file, repoRoot);
+
+      expect(readdirSync(dir)).toEqual(["nested"]);
+      expect(readdirSync(join(dir, "nested"))).toEqual(["report.html"]);
+
+      const html = readFileSync(file, "utf-8");
+      expect(result.path).toBe(file);
+      expect(result.bytes).toBe(Buffer.byteLength(html, "utf-8"));
+      expect(html.startsWith("<!doctype html>")).toBe(true);
+      expect(html).not.toContain(repoRoot);
+
+      const open = '<script type="application/json" id="stats">';
+      const start = html.indexOf(open);
+      expect(start).toBeGreaterThan(-1);
+      const end = html.indexOf("</script>", start);
+      const { version, ...stats } = JSON.parse(
+        html.slice(start + open.length, end),
+      );
+      expect(version).toBe(STATS_JSON_VERSION);
+      expect(stats).toEqual(analyzeEntry(example("lazy"), minify, repoRoot));
     });
   }
 });

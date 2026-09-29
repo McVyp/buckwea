@@ -1,4 +1,4 @@
-import { resolve as resolvePath } from "node:path";
+import { dirname, resolve as resolvePath } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 import {
   buildModuleGraph,
@@ -9,11 +9,17 @@ import {
   type BundleStats,
 } from "@buckwea/core";
 import { createOutputFiles, type OutputFile } from "./output.js";
+import { renderHtmlReport } from "./html.js";
 
 export interface BuildResult {
   moduleCount: number;
   outdir: string;
   files: OutputFile[];
+}
+
+export interface HtmlReportResult {
+  path: string;
+  bytes: number;
 }
 
 function bundleEntry(entry: string, options: BundleOptions, rootDir: string) {
@@ -56,4 +62,17 @@ export function analyzeEntry(
     throw new Error("bundle() returned no stats");
   }
   return output.stats;
+}
+
+export function writeHtmlReport(
+  entry: string,
+  minify: boolean,
+  file: string,
+  rootDir: string = process.cwd(),
+): HtmlReportResult {
+  const html = renderHtmlReport(analyzeEntry(entry, minify, rootDir));
+  const path = resolvePath(file);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, html);
+  return { path, bytes: Buffer.byteLength(html, "utf-8") };
 }
