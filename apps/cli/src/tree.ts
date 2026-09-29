@@ -13,7 +13,7 @@ export interface TreeNode {
 
 /**
 this function is copied into the HTML report as source text (buildTree.toString()), so it must stay self-contained: no runtime imports, no calls to other top-level functions. Keep helpers inside it.
-**/
+*/
 export function buildTree(stats: BundleStats): TreeNode {
   function node(kind: TreeNodeKind, name: string, id: string): TreeNode {
     return { kind, name, id, sourceBytes: 0, outputBytes: 0, children: [] };
