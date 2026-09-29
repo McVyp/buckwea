@@ -58,6 +58,30 @@ describe("parseArgs", () => {
     });
   });
 
+  it("parses analyze --html <file>", () => {
+    expect(
+      parseArgs(["analyze", "src/index.ts", "--html", "report.html"]),
+    ).toEqual({
+      command: "analyze",
+      entry: "src/index.ts",
+      minify: false,
+      json: false,
+      html: "report.html",
+    });
+  });
+
+  it("rejects --json together with --html", () => {
+    expect(() =>
+      parseArgs(["analyze", "src/index.ts", "--json", "--html", "report.html"]),
+    ).toThrow(/not both/);
+  });
+
+  it("rejects --html with no file", () => {
+    expect(() => parseArgs(["analyze", "src/index.ts", "--html"])).toThrow(
+      /argument missing/,
+    );
+  });
+
   it("parses a graph command", () => {
     expect(parseArgs(["graph", "src/index.ts"])).toEqual({
       command: "graph",

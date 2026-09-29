@@ -2,7 +2,13 @@ import { parseArgs as parseNodeArgs } from "node:util";
 
 export type CliCommand =
   | { command: "build"; entry: string; outdir: string; minify: boolean }
-  | { command: "analyze"; entry: string; minify: boolean; json: boolean }
+  | {
+      command: "analyze";
+      entry: string;
+      minify: boolean;
+      json: boolean;
+      html: string | undefined;
+    }
   | { command: "graph"; entry: string }
   | { command: "help" };
 
@@ -15,7 +21,7 @@ export class UsageError extends Error {
 
 export const USAGE = `Usage:
 buckwea build <entry> [--outdir <dir>] [--minify]
-buckwea analyze <entry> [--minify] [--json]
+buckwea analyze <entry> [--minify] [--json | --html <file>]
 buckwea graph <entry>
 buckwea --help`;
 
@@ -27,6 +33,7 @@ function runNodeParse(argv: string[]) {
       outdir: { type: "string" },
       minify: { type: "boolean" },
       json: { type: "boolean" },
+      html: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -62,11 +69,16 @@ export function parseArgs(argv: string[]): CliCommand {
   }
 
   if (command === "analyze") {
+    if (values.json && values.html !== undefined) {
+      throw new UsageError("Use either --json or --html <file>, not both");
+    }
+
     return {
       command: "analyze",
       entry,
       minify: values.minify ?? false,
       json: values.json ?? false,
+      html: values.html,
     };
   }
 
