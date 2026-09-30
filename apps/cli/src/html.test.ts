@@ -35,6 +35,13 @@ type FakeEl = {
   closest(selector: string): FakeEl | null;
 };
 
+type FakeWindow = {
+  innerWidth: number;
+  innerHeight: number;
+  listeners: Record<string, (e: FakeEvent) => void>;
+  addEventListener(type: string, fn: (e: FakeEvent) => void): void;
+};
+
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const lazy = analyzeEntry(
   join(repoRoot, "examples/lazy/index.ts"),
@@ -152,24 +159,33 @@ function fakeDom(statsJson: string, width: number, height: number) {
   map.clientWidth = width;
   map.clientHeight = height;
   const summary = make();
+  const controls = make();
   const tip = make();
   tip.hidden = true;
   const stats = make();
   stats.textContent = statsJson;
-  const byId: Record<string, FakeEl> = { map, summary, stats, tip };
+  const byId: Record<string, FakeEl> = { map, summary, stats, tip, controls };
   const document = {
     getElementById: (id: string) => byId[id] ?? null,
 
     createElement: () => make(),
   };
-  const window = { addEventListener() {}, innerWidth: 1000, innerHeight: 800 };
-  return { map, summary, tip, stats, document, window };
+  const window: FakeWindow = {
+    innerWidth: width,
+    innerHeight: height,
+    listeners: {},
+    addEventListener(type, fn) {
+      this.listeners[type] = fn;
+    },
+  };
+
+  return { map, summary, controls, make, tip, stats, document, window };
 }
 
 function runPage(stats: BundleStats, width = 800, height = 600) {
   const html = renderHtmlReport(stats);
 
-  for (const id of ["summary", "map", "tip"]) {
+  for (const id of ["summary", "map", "tip", "controls"]) {
     expect(html).toContain(`id="${id}"`);
   }
 
@@ -181,7 +197,15 @@ function runPage(stats: BundleStats, width = 800, height = 600) {
     html.lastIndexOf("</script>"),
   );
   const dom = fakeDom(statsJson, width, height);
-  vm.runInNewContext(code, { document: dom.document, window: dom.window });
+  vm.runInNewContext(code, {
+    document: dom.document,
+    window: dom.window,
+    setTimeout: (fn: () => void) => {
+      fn();
+      return 0;
+    },
+    clearTimeout: () => {},
+  });
   return dom;
 }
 
@@ -241,12 +265,51 @@ describe("report page script", () => {
     expect(allText(dom.tip)).toContain("unused exports: subtract");
   });
 
-  it("explains the runtime box in its tooltip", () =>{
+  it("explains the runtime box in its tooltip", () => {
     const dom = runPage(lazy);
     const box = dom.map.children.find((b) => b.className === "box runtime")!;
     dom.map.listeners.mousemove({ target: box, clientX: 10, clientY: 10 });
     const text = allText(dom.tip);
     expect(text).not.toContain("undefined");
     expect(text).toMatch(/output: \d+ B/);
+  });
+
+  it("uses singular words for one file or module", () => {
+    const dom = runPage(basic);
+    expect(dom.summary.textContent).toContain("2 modules in 1 file,");
+  });
+
+  it("marks modules that have unused exports", () => {
+    const dom = runPage(basic);
+    expect(boxNamed(dom, "math.ts").className).toBe("box module unused");
+    expect(boxNamed(dom, "index.ts").className).toBe("box module");
+  });
+
+  it("redraws with sources sizes when the toggle is clicked", () => {
+    const dom = runPage(lazy);
+    expect(dom.controls.dataset.size).toBe("outputBytes");
+    
+    const button = dom.make();
+    button.className = "size";
+    button.dataset.size = "sourceBytes";
+    dom.controls.listeners.click({ target: button, clientX: 0, clientY: 0 });
+
+    expect(dom.controls.dataset.size).toBe("sourceBytes");
+    const greet = lazy.modules.find((m) => m.id === "examples/lazy/greet.ts")!;
+    expect(boxNamed(dom, "greet.ts").children[0].textContent).toBe(`greet.ts ${greet.sourceBytes} B`,);
+
+    const kinds = dom.map.children.map((b) => b.className);
+    expect(kinds).not.toContain("box runtime");
+  });
+
+  it("redraws to fit the new size when the window is resized", () => {
+    const dom = runPage(lazy, 800, 600);
+    dom.map.clientWidth = 400;
+    dom.window.listeners.resize({ target: dom.map, clientX: 0, clientY: 0 });
+
+    const rightEdges = dom.map.children.map(
+      (b) => parseFloat(b.style.left) + parseFloat(b.style.width),
+    );
+    expect(Math.max(...rightEdges)).toBeCloseTo(400);
   });
 });
