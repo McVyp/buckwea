@@ -17,7 +17,7 @@ describe("toJavaScriptSource", () => {
     expect(js.indexOf("return")).toBe(ts.indexOf("return"));
   });
 
-  it("removes type-only d3eclarations like interfaces", () => {
+  it("removes type-only declarations like interfaces", () => {
     const src = "interface Point { x: number }\nexport const origin = 0;\n";
     const js = toJavaScriptSource("/p/point.ts", src);
     expect(js).not.toContain("interface");
