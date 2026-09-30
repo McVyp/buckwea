@@ -11,10 +11,13 @@ Requires Node.js 24+ and pnpm
 ```bash
 pnpm install
 pnpm build
-node apps/cli/dist/index.js analyze examples/lazy/index.ts --html report.html
+pnpm report examples/lazy/index.ts
 ```
 
-Then open `report.html` in the browser.
+> This writes `report.html` and opens it in the browser (Windows/WSL).
+On macOS or Linux, run
+`node apps/cli/dist/index.js analyze examples/lazy/index.ts --html report.html`
+and open `report.html`
 
 ## Usage
 
