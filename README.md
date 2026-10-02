@@ -23,7 +23,21 @@ and open `report.html`
 
 Run commands as `node apps/cli/dist/index.js <command>`:
 ```bash
-buckwea build <entry> [--outdir <dir>] [--minify]
-buckwea analyze <entry> [--minify] [--json | --html <file>]
+buckwea build <entry> [--outdir <dir>] [--minify] [--no-cache]
+buckwea analyze <entry> [--minify] [--no-cache] [--json | --html <file>]
 buckwea graph <entry>
+```
+
+## Caching
+Parse results are cached in `.buckwea-cache/` (safe to delete anytime);
+pass `--no-cache` to skip it.
+
+On a generated 500-module project, a warm cache makes a full build ~35-40X faster. Most of the uncached time is parsing:
+<p align="center">
+  <img alt="image" src="https://github.com/user-attachments/assets/5b9d10f0-7baf-42fe-861c-208676a160ae" />
+</p>
+
+Measure it:
+```bash
+pnpm timing:cache
 ```
