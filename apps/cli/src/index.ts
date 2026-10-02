@@ -14,6 +14,10 @@ process.emitWarning = ((warning: string | Error, ...rest: unknown[]) => {
   (originalEmitWarning as (...args: unknown[]) => void)(warning, ...rest);
 }) as typeof process.emitWarning;
 
+function cacheDirFor(cmd: { cache: boolean }): string | undefined {
+  return cmd.cache ? resolvePath(".buckwea-cache") : undefined;
+}
+
 function run(cmd: CliCommand): void {
   if (cmd.command == "help") {
     console.log(USAGE);
@@ -29,21 +33,30 @@ function run(cmd: CliCommand): void {
     return;
   }
 
+  const root = process.cwd();
+  const cacheDir = cacheDirFor(cmd);
+
   if (cmd.command === "analyze") {
     if (cmd.html !== undefined) {
-      const result = writeHtmlReport(cmd.entry, cmd.minify, cmd.html);
+      const result = writeHtmlReport(
+        cmd.entry,
+        cmd.minify,
+        cmd.html,
+        root,
+        cacheDir,
+      );
       const shown = relative(process.cwd(), result.path);
       console.log(
         `Wrote ${shown.startsWith("..") ? result.path : shown} (${result.bytes} bytes)`,
       );
       return;
     }
-    const stats = analyzeEntry(cmd.entry, cmd.minify);
+    const stats = analyzeEntry(cmd.entry, cmd.minify, root, cacheDir);
     console.log(cmd.json ? formatStatsJson(stats) : formatStatsTable(stats));
     return;
   }
 
-  const result = buildToDisk(cmd.entry, cmd.outdir, cmd.minify);
+  const result = buildToDisk(cmd.entry, cmd.outdir, cmd.minify, root, cacheDir);
   console.log(`Bundled ${result.moduleCount} modules into ${result.outdir}:`);
   for (const file of result.files) {
     const shown = relative(process.cwd(), file.path);

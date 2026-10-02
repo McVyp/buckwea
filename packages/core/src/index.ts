@@ -5,4 +5,5 @@ export * from "./tree-shaking/index.js";
 export * from "./bundler/index.js";
 export * from "./chunking/index.js";
 export * from "./module-graph/relativize.js";
+export * from "./cache/index.js";
 export type { SourceMapV3 } from "./sourcemap/index.js";

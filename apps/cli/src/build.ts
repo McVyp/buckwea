@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import {
   buildModuleGraph,
   bundle,
+  createDiskCache,
   relativizeGraph,
   toModuleId,
   type BundleOptions,
@@ -22,9 +23,19 @@ export interface HtmlReportResult {
   bytes: number;
 }
 
-function bundleEntry(entry: string, options: BundleOptions, rootDir: string) {
+function bundleEntry(
+  entry: string,
+  options: BundleOptions,
+  rootDir: string,
+  cacheDir: string | undefined,
+) {
   const entryPath = resolvePath(entry);
-  const graph = relativizeGraph(buildModuleGraph(entryPath), rootDir);
+  const graphOptions =
+    cacheDir === undefined ? {} : { cache: createDiskCache(cacheDir) };
+  const graph = relativizeGraph(
+    buildModuleGraph(entryPath, graphOptions),
+    rootDir,
+  );
   const output = bundle(graph, toModuleId(rootDir, entryPath), {
     format: "script",
     ...options,
@@ -37,8 +48,9 @@ export function buildToDisk(
   outdir: string,
   minify: boolean,
   rootDir: string = process.cwd(),
+  cacheDir?: string,
 ): BuildResult {
-  const { graph, output } = bundleEntry(entry, { minify }, rootDir);
+  const { graph, output } = bundleEntry(entry, { minify }, rootDir, cacheDir);
   const absOutdir = resolvePath(outdir);
   const files = createOutputFiles(output, absOutdir);
   mkdirSync(absOutdir, { recursive: true });
@@ -56,8 +68,14 @@ export function analyzeEntry(
   entry: string,
   minify: boolean,
   rootDir: string = process.cwd(),
+  cacheDir?: string,
 ): BundleStats {
-  const { output } = bundleEntry(entry, { minify, stats: true }, rootDir);
+  const { output } = bundleEntry(
+    entry,
+    { minify, stats: true },
+    rootDir,
+    cacheDir,
+  );
   if (!output.stats) {
     throw new Error("bundle() returned no stats");
   }
@@ -69,8 +87,9 @@ export function writeHtmlReport(
   minify: boolean,
   file: string,
   rootDir: string = process.cwd(),
+  cacheDir?: string,
 ): HtmlReportResult {
-  const html = renderHtmlReport(analyzeEntry(entry, minify, rootDir));
+  const html = renderHtmlReport(analyzeEntry(entry, minify, rootDir, cacheDir));
   const path = resolvePath(file);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, html);

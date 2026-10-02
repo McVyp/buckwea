@@ -123,3 +123,34 @@ describe("buckwea analyze --html (end to end)", () => {
     });
   }
 });
+
+describe("parse cahce (end to end)", () => {
+  it("buld writes the same files with no cache, a cold cache and a warm cache", () => {
+    const cacheDir = join(freshDir(), ".buckwea-cache");
+    const plain = freshDir();
+    const cold = freshDir();
+    const warm = freshDir();
+
+    const result = buildToDisk(example("lazy"), plain, false, repoRoot);
+    buildToDisk(example("lazy"), cold, false, repoRoot, cacheDir);
+    expect(readdirSync(cacheDir)).toHaveLength(result.moduleCount);
+    buildToDisk(example("lazy"), warm, false, repoRoot, cacheDir);
+
+    expect(readdirSync(cold).sort()).toEqual(readdirSync(plain).sort());
+    expect(readdirSync(warm).sort()).toEqual(readdirSync(plain).sort());
+    for (const name of readdirSync(plain)) {
+      const expected = readFileSync(join(plain, name), "utf-8");
+      expect(readFileSync(join(cold, name), "utf-8")).toBe(expected);
+      expect(readFileSync(join(warm, name), "utf-8")).toBe(expected);
+    }
+  });
+
+  it("analyze gives thee same stats with a warm cache", () => {
+    const cacheDir = join(freshDir(), ".buckwea-cache");
+    const plain = analyzeEntry(example("lazy"), false, repoRoot);
+    analyzeEntry(example("lazy"), false, repoRoot, cacheDir ); //fills the cache
+    expect(
+      analyzeEntry(example("lazy"), false, repoRoot, cacheDir),
+    ).toEqual(plain);
+  });
+});

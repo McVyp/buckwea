@@ -1,13 +1,20 @@
 import { parseArgs as parseNodeArgs } from "node:util";
 
 export type CliCommand =
-  | { command: "build"; entry: string; outdir: string; minify: boolean }
+  | {
+      command: "build";
+      entry: string;
+      outdir: string;
+      minify: boolean;
+      cache: boolean;
+    }
   | {
       command: "analyze";
       entry: string;
       minify: boolean;
       json: boolean;
       html: string | undefined;
+      cache: boolean;
     }
   | { command: "graph"; entry: string }
   | { command: "help" };
@@ -20,8 +27,8 @@ export class UsageError extends Error {
 }
 
 export const USAGE = `Usage:
-buckwea build <entry> [--outdir <dir>] [--minify]
-buckwea analyze <entry> [--minify] [--json | --html <file>]
+buckwea build <entry> [--outdir <dir>] [--minify] [--no-cache]
+buckwea analyze <entry> [--minify] [--no-cache] [--json | --html <file>]
 buckwea graph <entry>
 buckwea --help`;
 
@@ -29,9 +36,12 @@ function runNodeParse(argv: string[]) {
   return parseNodeArgs({
     args: argv,
     allowPositionals: true,
+    // let every boolean option be turned off with --no-<name>
+    allowNegative: true,
     options: {
       outdir: { type: "string" },
       minify: { type: "boolean" },
+      cache: { type: "boolean" },
       json: { type: "boolean" },
       html: { type: "string" },
       help: { type: "boolean", short: "h" },
@@ -79,6 +89,7 @@ export function parseArgs(argv: string[]): CliCommand {
       minify: values.minify ?? false,
       json: values.json ?? false,
       html: values.html,
+      cache: values.cache ?? true,
     };
   }
 
@@ -87,5 +98,6 @@ export function parseArgs(argv: string[]): CliCommand {
     entry,
     outdir: values.outdir ?? "dist",
     minify: values.minify ?? false,
+    cache: values.cache ?? true,
   };
 }

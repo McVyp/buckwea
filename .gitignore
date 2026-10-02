@@ -10,3 +10,5 @@ Cargo.lock
 *.log
 .env
 .env.local
+
+.buckwea-cache/

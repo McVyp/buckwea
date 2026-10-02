@@ -8,6 +8,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       outdir: "dist",
       minify: false,
+      cache: true,
     });
   });
 
@@ -19,6 +20,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       outdir: "build",
       minify: true,
+      cache: true,
     });
   });
 
@@ -28,6 +30,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       outdir: "dist",
       minify: true,
+      cache: true,
     });
   });
 
@@ -37,6 +40,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       minify: false,
       json: false,
+      cache: true,
     });
   });
 
@@ -46,6 +50,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       minify: true,
       json: false,
+      cache: true,
     });
   });
 
@@ -55,6 +60,7 @@ describe("parseArgs", () => {
       entry: "src/index.ts",
       minify: false,
       json: true,
+      cache: true,
     });
   });
 
@@ -67,6 +73,7 @@ describe("parseArgs", () => {
       minify: false,
       json: false,
       html: "report.html",
+      cache: true,
     });
   });
 
@@ -106,5 +113,21 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["build", "src/index.ts", "--fast"])).toThrow(
       UsageError,
     );
+  });
+});
+
+describe("parseArgs --no-cache", () => {
+  it("caches by default for build and analyze", () => {
+    expect(parseArgs(["build", "a.ts"])).toMatchObject({ cache: true });
+    expect(parseArgs(["analyze", "a.ts"])).toMatchObject({ cache: true });
+  });
+
+  it("--no-cache turns the cahche off for build and analyze", () => {
+    expect(parseArgs(["build", "a.ts", "--no-cache"])).toMatchObject({
+      cache: false,
+    });
+    expect(
+      parseArgs(["analyze", "a.ts", "--no-cache", "--json"]),
+    ).toMatchObject({ cache: false, json: true });
   });
 });
