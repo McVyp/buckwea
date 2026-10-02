@@ -99,24 +99,18 @@ function step(label, fn) {
 function clearProgress() {
   if (process.stdout.isTTY) process.stdout.write(`\r${"".padEnd(80)}\r`);
 }
-function step(text) {
-  if (process.stdout.isTTY) process.stdout.write(`\r${text.padEnd(60)}`);
-}
 
 const work = mkdtempSync(join(tmpdir(), "buckwea-timing-"));
 try {
   const root = join(work, "project");
-  status(`Generating ${MODULES + 1} modules...`);
   const { entry, bytes } = generateProject(root);
-
-  status("Warm-up build...");
   const reference = step("warm-up build", () => buildOnce(entry, root)).entry
     .code;
 
   const none = [];
   const cold = [];
   const warm = [];
-
+  
   for (let r = 0; r < RUNS; r++) {
     none.push(
       step(
@@ -137,7 +131,6 @@ try {
   const warmDir = join(work, "warm");
   step("filling the warm cache", () => buildOnce(entry, root, warmDir));
   for (let r = 0; r < RUNS; r++) {
-    step(`warm cache  run ${r + 1}/${RUNS}`);
     const { ms, result } = step(`warm cache  run ${r + 1}/${RUNS}`, () =>
       time(() => buildOnce(entry, root, warmDir)),
     );
