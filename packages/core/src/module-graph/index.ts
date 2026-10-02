@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { ParsedModule, parseModule } from "../parser/index.js";
+import { type ParsedModule, parseModule } from "../parser/index.js";
 import { resolve } from "../resolver/index.js";
 import { toJavaScriptSource } from "./stripTypes.js";
+import { cacheKey, type ParseCache } from "../cache/index.js";
 
 export interface ModuleGraphNode {
   parsedModule: ParsedModule;
@@ -11,7 +12,14 @@ export interface ModuleGraphNode {
 
 export type ModuleGraph = Map<string, ModuleGraphNode>;
 
-export function buildModuleGraph(entryPath: string): ModuleGraph {
+export interface BuildGraphOptions {
+  cache?: ParseCache;
+}
+
+export function buildModuleGraph(
+  entryPath: string,
+  options: BuildGraphOptions = {},
+): ModuleGraph {
   const graph: ModuleGraph = new Map();
   const visited = new Set<string>();
 
@@ -19,11 +27,11 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
     if (visited.has(filePath)) return;
     visited.add(filePath);
 
-    const source = toJavaScriptSource(
+    const parsedModule = parseFile(
       filePath,
       readFileSync(filePath, "utf-8"),
+      options.cache,
     );
-    const parsedModule = parseModule(filePath, source);
 
     const dependencies = new Map<string, string>();
     const dynamicDependencies = new Map<string, string>();
@@ -71,4 +79,27 @@ export function buildModuleGraph(entryPath: string): ModuleGraph {
   }
   visit(entryPath);
   return graph;
+}
+
+function parseFile(
+  filePath: string,
+  content: string,
+  cache: ParseCache | undefined,
+): ParsedModule {
+  if (!cache) {
+    return parseModule(filePath, toJavaScriptSource(filePath, content));
+  }
+
+  const key = cacheKey(filePath, content);
+  const hit = cache.get(key);
+  if (hit) return { path: filePath, ...hit };
+
+  const parsed = parseModule(filePath, toJavaScriptSource(filePath, content));
+  cache.set(key, {
+    source: parsed.source,
+    imports: parsed.imports,
+    exports: parsed.exports,
+    dynamicImports: parsed.dynamicImports,
+  });
+  return parsed;
 }
