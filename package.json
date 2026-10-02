@@ -8,7 +8,8 @@
     "clean": "rimraf --glob \"packages/*/dist\" \"apps/*/dist\" \"*.tsbuildinfo\" \"packages/*/*.tsbuildinfo\" \"apps/*/*.tsbuildinfo\"",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.check.json",
-    "report": "sh -c 'node apps/cli/dist/index.js analyze \"$1\" --html report.html && (explorer.exe report.html || true )' --"
+    "report": "sh -c 'node apps/cli/dist/index.js analyze \"$1\" --html report.html && (explorer.exe report.html || true )' --",
+    "timing:cache": "pnpm build && node --no-warnings scripts/cache-timing.mjs"
   },
   "keywords": [],
   "author": "",
